@@ -36,6 +36,7 @@ WITH
         COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN gross_revenue-COALESCE(total_discounts,0) END),0) as repeat_order_subtotal_sales,
         COALESCE(SUM(total_tax),0) as gross_tax, 
         COALESCE(SUM(shipping_price),0) as gross_shipping,
+        COALESCE(SUM(gross_revenue-COALESCE(total_discounts,0)+COALESCE(total_tax,0)+COALESCE(shipping_price,0)),0) as total_sales,
         COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN gross_revenue-COALESCE(total_discounts,0)+COALESCE(total_tax,0)+COALESCE(shipping_price,0) END),0) as first_order_total_sales,
         COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN gross_revenue-COALESCE(total_discounts,0)+COALESCE(total_tax,0)+COALESCE(shipping_price,0) END),0) as repeat_order_total_sales
     FROM {{ ref('shopify_daily_sales_by_order') }}
