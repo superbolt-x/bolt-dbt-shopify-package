@@ -15,6 +15,7 @@
     "total_tax",
     "total_price",
     "total_price_usd",
+    "original_total_duties_set",
     "current_total_discounts",
     "current_subtotal_price",
     "current_total_tax",
@@ -217,8 +218,8 @@ SELECT *,
     created_at::date as order_date, 
     {{ get_date_parts('order_date') }},
     COALESCE(total_discounts/NULLIF(gross_revenue,0),0) as discount_rate,
-    -- include cancelled orders to match Shopify
-    ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_at) as customer_order_index,
+    -- exclude cancelled orders vs Shopify includes cancelled orders
+    CASE WHEN cancelled_at IS NULL THEN ROW_NUMBER() OVER (PARTITION BY customer_id, cancelled_at IS NULL ORDER BY created_at) END as customer_order_index,
     order_id as unique_key
 FROM orders 
 LEFT JOIN discount USING(order_id)
