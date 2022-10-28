@@ -37,7 +37,7 @@ WITH orders AS
         product_title,
         variant_title,
         item_title,
-        gift_card
+        gift_card,
         price,
         quantity,
         price * quantity as gross_sales,
