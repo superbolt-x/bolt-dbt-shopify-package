@@ -1,3 +1,20 @@
+{%- set schema_name,
+        order_table_name, 
+        discount_table_name,
+        shipping_table_name,
+        tag_table_name,
+        refund_table_name,
+        adjustment_table_name,
+        line_refund_table_name
+        = 'shopify_raw', 
+        'order', 
+        'order_discount_code', 
+        'order_shipping_line',
+        'order_tag',
+        'refund',
+        'order_adjustment',
+        'order_line_refund' -%}
+        
 {%- set order_selected_fields = [
     "id",
     "name",
@@ -79,24 +96,18 @@
     "total_tax"
 ] -%}
 
-{%- set schema_name,
-        order_table_name, 
-        discount_table_name,
-        shipping_table_name,
-        tag_table_name,
-        refund_table_name,
-        adjustment_table_name,
-        line_refund_table_name
-        = 'shopify_raw', 
-        'order', 
-        'order_discount_code', 
-        'order_shipping_line',
-        'order_tag',
-        'refund',
-        'order_adjustment',
-        'order_line_refund' -%}
+{%- set order_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order') -%}
+{%- set discount_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_discount_code') -%}
+{%- set shipping_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_shipping_line') -%}
+{%- set tag_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_tag') -%}
+{%- set refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'refund') -%}
+{%- set adjustment_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_adjustment') -%}
+{%- set line_refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line_refund') -%}
 
-WITH orders AS 
+WITH order_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = order_raw_tables) }}),
+
+    orders AS 
     (SELECT 
 
         {% for field in order_selected_fields -%}
@@ -104,9 +115,13 @@ WITH orders AS
         {%- if not loop.last %},{% endif %}
         {% endfor %}
 
-    FROM {{ source(schema_name, order_table_name) }}),
+    FROM order_raw_data
+    ),
 
-    discount_raw AS 
+    discount_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = discount_raw_tables) }}),
+
+    discount_staging AS 
     (SELECT 
         
         {% for field in discount_selected_fields -%}
@@ -114,17 +129,20 @@ WITH orders AS
         {%- if not loop.last %},{% endif %}
         {% endfor %}
 
-    FROM {{ source(schema_name, discount_table_name) }}
+    FROM discount_raw_data
     ),
 
     discount AS 
     (SELECT order_id, 
         LISTAGG(discount_code, ', ') WITHIN GROUP (ORDER BY discount_code) as discount_code
-    FROM discount_raw
+    FROM discount_staging
     GROUP BY order_id
     ),
 
-    shipping_raw AS 
+    shipping_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = shipping_raw_tables) }}),
+
+    shipping_staging AS 
     (SELECT 
         
         {% for field in shipping_selected_fields -%}
@@ -132,25 +150,31 @@ WITH orders AS
         {%- if not loop.last %},{% endif %}
         {% endfor %}
 
-    FROM {{ source(schema_name, shipping_table_name) }}
+    FROM shipping_raw_data
     ),
 
     shipping AS 
     (SELECT order_id, 
         LISTAGG(shipping_title, ', ') WITHIN GROUP (ORDER BY shipping_title) as shipping_title,
         COALESCE(SUM(shipping_price),0) as shipping_price
-    FROM shipping_raw
+    FROM shipping_staging
     GROUP BY order_id
     ),
+
+    tag_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = tag_raw_tables) }}),
 
     tags AS 
     (SELECT order_id, 
         LISTAGG(value, ', ') WITHIN GROUP (ORDER BY index) as order_tags
-    FROM {{ source(schema_name, tag_table_name) }}
+    FROM tag_raw_data
     GROUP BY order_id
     ),
 
-    refund_raw AS 
+    refund_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = refund_raw_tables) }}),
+
+    refund_staging AS 
     (SELECT 
         
         {% for field in refund_selected_fields -%}
@@ -158,10 +182,13 @@ WITH orders AS
         {%- if not loop.last %},{% endif %}
         {% endfor %}
 
-    FROM {{ source(schema_name, refund_table_name) }}
+    FROM refund_raw_data
     ),
 
-    adjustment_raw AS 
+    adjustment_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = adjustment_raw_tables) }}),
+
+    adjustment_staging AS 
     (SELECT 
         
         {% for field in adjustment_selected_fields -%}
@@ -169,7 +196,7 @@ WITH orders AS
         {%- if not loop.last %},{% endif %}
         {% endfor %}
 
-    FROM {{ source(schema_name, adjustment_table_name) }}
+    FROM adjustment_raw_data
     ),
 
     adjustment AS 
@@ -178,11 +205,14 @@ WITH orders AS
         SUM(CASE WHEN refund_kind = 'refund_discrepancy' THEN refund_amount END) as subtotal_refund,
         SUM(CASE WHEN refund_kind = 'shipping_refund' THEN refund_amount END) as shipping_refund,
         SUM(refund_tax_amount) as tax_refund
-    FROM adjustment_raw
+    FROM adjustment_staging
     GROUP BY refund_id
     ),
 
-    line_refund_raw AS 
+    line_refund_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = line_refund_raw_tables) }}),
+
+    line_refund_staging AS 
     (SELECT 
         
         {% for field in line_refund_selected_fields -%}
@@ -190,7 +220,7 @@ WITH orders AS
         {%- if not loop.last %},{% endif %}
         {% endfor %}
 
-    FROM {{ source(schema_name, line_refund_table_name) }}
+    FROM line_refund_raw_data
     ),
 
     line_refund AS 
@@ -198,7 +228,7 @@ WITH orders AS
         refund_id, 
         SUM(refund_subtotal) as subtotal_refund,
         SUM(refund_total_tax) as tax_refund
-    FROM line_refund_raw
+    FROM line_refund_staging
     GROUP BY refund_id
     ),
 
@@ -208,7 +238,7 @@ WITH orders AS
         COALESCE(SUM(line_refund.subtotal_refund),0) as subtotal_line_refund,
         ABS(COALESCE(SUM(shipping_refund),0)) as shipping_refund,
         ABS(COALESCE(SUM(adjustment.tax_refund),0)) + COALESCE(SUM(line_refund.tax_refund),0) as tax_refund
-    FROM refund_raw 
+    FROM refund_staging
     LEFT JOIN adjustment USING(refund_id)
     LEFT JOIN line_refund USING(refund_id)
     GROUP BY order_id

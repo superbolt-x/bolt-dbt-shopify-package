@@ -1,3 +1,8 @@
+{%- set schema_name,
+        customer_table_name,
+        customer_tag_table_name
+        = 'shopify_raw', 'customer','customer_tag' -%}
+        
 {%- set selected_fields = [
     "id",
     "first_name",
@@ -6,12 +11,13 @@
     "created_at"
 ] -%}
 
-{%- set schema_name,
-        customer_table_name,
-        customer_tag_table_name
-        = 'shopify_raw', 'customer','customer_tag' -%}
+{%- set customer_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'customer') -%}
+{%- set tag_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'customer_tag') -%}
 
-WITH customers AS 
+WITH customer_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = customer_raw_tables) }}),
+
+    customers AS 
     (SELECT 
 
         {% for column in selected_fields -%}
@@ -19,12 +25,15 @@ WITH customers AS
         {%- if not loop.last %},{% endif %}
         {% endfor %}
 
-    FROM {{ source(schema_name, customer_table_name) }}
+    FROM customer_raw_data
     ),
+
+    tag_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = tag_raw_tables) }}),
 
     tags AS 
     (SELECT customer_id, LISTAGG(value, ', ') WITHIN GROUP (ORDER BY index) as customer_tags
-    FROM {{ source(schema_name, customer_tag_table_name) }}
+    FROM tag_raw_data
     GROUP BY customer_id
     )
 
