@@ -1,5 +1,7 @@
 {{ config (
-    alias = target.database + '_shopify_daily_sales_by_order'
+    alias = target.database + '_shopify_daily_sales_by_order',
+    materialized='incremental',
+    unique_key='unique_key'
 )}}
 
 
@@ -37,8 +39,15 @@ WITH giftcard_deduction AS
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)
     WHERE giftcard_only = 'false'
+    AND cancelled_at IS NULL
     AND source_name NOT IN ({{ sales_channel_exclusion_list }})
     AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
+    {% if is_incremental() -%}
+
+    -- this filter will only be applied on an incremental run
+    AND order_date >= (select max(date)-90 from {{ this }})
+
+    {% endif %}
     ),
 
     customers AS 
