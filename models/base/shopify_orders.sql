@@ -112,8 +112,8 @@
 WITH 
     -- To tackle the signal loss between Fivetran and Shopify transformations
     stellar_signal AS 
-    (SELECT 1
-    FROM {{ source(schema_name, order_table_name) }}
+    (SELECT _fivetran_synced
+    FROM {{ source('shopify_raw', 'order') }}
     LIMIT 1
     ),
 
