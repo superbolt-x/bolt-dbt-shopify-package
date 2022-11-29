@@ -26,9 +26,11 @@ WITH customer_raw_data AS
         {% endfor %}
 
     FROM customer_raw_data
-    ),
+    )
 
-    tag_raw_data AS 
+    {% set tag_table_exists = check_source_exists('shopify_raw','customer_tag') -%}
+    {%- if tag_table_exists %}
+    , tag_raw_data AS 
     ({{ dbt_utils.union_relations(relations = tag_raw_tables) }}),
 
     tags AS 
@@ -36,9 +38,12 @@ WITH customer_raw_data AS
     FROM tag_raw_data
     GROUP BY customer_id
     )
+    {%- endif %}
 
 
 SELECT *,
     customer_id as unique_key
 FROM customers 
+{%- if tag_table_exists %}
 LEFT JOIN tags USING(customer_id)
+{%- endif %}

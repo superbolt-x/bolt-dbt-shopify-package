@@ -53,9 +53,11 @@ WITH product_raw_data AS
         {% endfor %}
 
     FROM variant_raw_data
-    ),
+    )
 
-    tag_raw_data AS 
+    {% set tag_table_exists = check_source_exists('shopify_raw','product_tag') -%}
+    {%- if tag_table_exists %}
+    , tag_raw_data AS 
     ({{ dbt_utils.union_relations(relations = tag_raw_tables) }}),
 
     tags AS 
@@ -63,9 +65,12 @@ WITH product_raw_data AS
     FROM tag_raw_data
     GROUP BY product_id
     )
+    {%- endif %}
 
 SELECT *,
     product_id||'_'||variant_id as unique_key
 FROM products 
 LEFT JOIN variants USING(product_id)
+{%- if tag_table_exists %}
 LEFT JOIN tags USING(product_id)
+{%- endif %}
