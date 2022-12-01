@@ -1,8 +1,3 @@
-{{ config( 
-        materialized='incremental',
-        unique_key='unique_key'
-) }}
-
 {%- set schema_name,
         order_table_name, 
         discount_table_name,
@@ -129,12 +124,6 @@ WITH
         {% endfor %}
 
     FROM order_raw_data
-    {% if is_incremental() -%}
-
-    -- this filter will only be applied on an incremental run
-    WHERE created_at::date >= (select max(order_date)-90 from {{ this }})
-
-    {% endif %}
     ),
 
     discount_raw_data AS 
