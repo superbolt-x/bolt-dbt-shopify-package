@@ -7,14 +7,15 @@
 WITH 
     {%- for date_granularity in date_granularity_list %}
 
-    transactions_{{date_granularity}} AS 
+    refunds_{{date_granularity}} AS 
     (SELECT 
         '{{date_granularity}}' as date_granularity,
         {{date_granularity}} as date,
-        SUM(paid_by_customer) as paid_by_customer,
-        SUM(refunded) as refunded,
-        SUM(net_payment) as net_payment
-    FROM {{ ref('shopify_daily_sales_by_transaction') }}
+        SUM(COALESCE(subtotal_order_refund,0)+COALESCE(subtotal_line_refund,0)) as subtotal_refund,
+        SUM(shipping_refund) as shipping_refund,
+        SUM(tax_refund) as tax_refund,
+        SUM(COALESCE(subtotal_order_refund,0)+COALESCE(subtotal_line_refund,0)+COALESCE(shipping_refund,0)+COALESCE(tax_refund,0)) as total_refund
+    FROM {{ ref('shopify_refunds') }}
     GROUP BY date_granularity, {{date_granularity}}
     ),
 
@@ -47,11 +48,13 @@ WITH
 {% for date_granularity in date_granularity_list -%}
 SELECT 
     s.*, 
-    t.refunded as returns,
-    s.subtotal_sales - t.refunded as net_sales,
-    net_payment
+    r.subtotal_refund as subtotal_returns,
+    r.shipping_refund as shipping_returns,
+    r.tax_refund as tax_returns,
+    s.subtotal_sales - r.subtotal_refund as subtotal_net_sales,
+    s.total_sales - r.total_refund as net_sales
 FROM sales_{{date_granularity}} s
-LEFT JOIN transactions_{{date_granularity}} t USING(date_granularity, date)
+LEFT JOIN refunds_{{date_granularity}} r USING(date_granularity, date)
 {% if not loop.last %}UNION ALL
 {% endif %}
 
