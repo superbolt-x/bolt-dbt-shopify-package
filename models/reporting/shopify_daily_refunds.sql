@@ -23,7 +23,7 @@ WITH
     ),
 
     order_customer AS 
-    (SELECT order_id, customer_id
+    (SELECT order_id, customer_id, cancelled_at
     FROM {{ ref('shopify_orders') }}
     )
 
@@ -31,3 +31,4 @@ SELECT *,
     {{ get_date_parts('date') }}
 FROM refunds
 LEFT JOIN order_customer USING(order_id)
+WHERE cancelled_at is null
