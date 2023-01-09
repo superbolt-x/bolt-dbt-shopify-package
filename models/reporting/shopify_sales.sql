@@ -48,11 +48,11 @@ WITH
 {% for date_granularity in date_granularity_list -%}
 SELECT 
     s.*, 
-    r.subtotal_refund as subtotal_returns,
-    r.shipping_refund as shipping_returns,
-    r.tax_refund as tax_returns,
-    s.subtotal_sales - r.subtotal_refund as subtotal_net_sales,
-    s.total_sales - r.total_refund as net_sales
+    coalesce(r.subtotal_refund,0) as subtotal_returns,
+    coalesce(r.shipping_refund,0) as shipping_returns,
+    coalesce(r.tax_refund,0) as tax_returns,
+    s.subtotal_sales - coalesce(r.subtotal_refund,0) as subtotal_net_sales,
+    s.total_sales - coalesce(r.total_refund,0) as net_sales
 FROM sales_{{date_granularity}} s
 LEFT JOIN refunds_{{date_granularity}} r USING(date_granularity, date)
 {% if not loop.last %}UNION ALL
