@@ -7,7 +7,7 @@
 WITH 
     refunds AS 
     (SELECT 
-        date as date,
+        date::date as date,
         refund_id,
         order_id, 
         case
