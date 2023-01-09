@@ -80,7 +80,8 @@
 
 {%- set refund_selected_fields = [
     "id",
-    "order_id"
+    "order_id",
+    "processed_at"
 ] -%}
 
 {%- set adjustment_selected_fields = [
@@ -242,6 +243,7 @@ WITH
 
     refund AS 
     (SELECT order_id, 
+        processed_at as refund_proccessed_at,
         ABS(COALESCE(SUM(adjustment.subtotal_refund),0)) as subtotal_order_refund,
         COALESCE(SUM(line_refund.subtotal_refund),0) as subtotal_line_refund,
         ABS(COALESCE(SUM(shipping_refund),0)) as shipping_refund,
@@ -249,7 +251,7 @@ WITH
     FROM refund_staging
     LEFT JOIN adjustment USING(refund_id)
     LEFT JOIN line_refund USING(refund_id)
-    GROUP BY order_id
+    GROUP BY order_id, refund_proccessed_at
     )
 
 SELECT *,
