@@ -1,4 +1,4 @@
-{%- set schema_name
+{%- set schema_name,
         refund_table_name,
         adjustment_table_name,
         line_refund_table_name
