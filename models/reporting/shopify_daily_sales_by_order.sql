@@ -38,7 +38,7 @@ WITH giftcard_deduction AS
         order_tags
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)
-    WHERE giftcard_only = 'true'
+    WHERE giftcard_only = 'false'
     AND cancelled_at IS NULL
     AND source_name NOT IN ({{ sales_channel_exclusion_list }})
     AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
