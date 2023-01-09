@@ -17,7 +17,7 @@ WITH orders AS
     ),
 
     customers AS 
-    (SELECT customer_id, customer_acquisition_date, customer_tags
+    (SELECT customer_id, customer_acquisition_date
     FROM {{ ref('shopify_customers') }} 
     ),
 
