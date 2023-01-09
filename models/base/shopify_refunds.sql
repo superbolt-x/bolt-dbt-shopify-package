@@ -1,11 +1,13 @@
 {%- set schema_name,
         refund_table_name,
         adjustment_table_name,
-        line_refund_table_name
+        line_refund_table_name,
+        transaction_table_name
         = 'shopify_raw',
         'refund',
         'order_adjustment',
-        'order_line_refund' -%}
+        'order_line_refund',
+        'transaction' -%}
 
 {%- set refund_selected_fields = [
     "id",
@@ -21,6 +23,12 @@
 ] -%}
 
 {%- set line_refund_selected_fields = [
+    "refund_id",
+    "subtotal",
+    "total_tax"
+] -%}
+
+{%- set transaction_selected_fields = [
     "refund_id",
     "subtotal",
     "total_tax"
