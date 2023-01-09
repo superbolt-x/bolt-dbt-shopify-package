@@ -100,12 +100,12 @@ WITH
     )
 
     SELECT order_id, 
+        refund_id,
         processed_at as date,
         ABS(COALESCE(SUM(adjustment.subtotal_refund),0)) as subtotal_order_refund,
         COALESCE(SUM(line_refund.subtotal_refund),0) as subtotal_line_refund,
         ABS(COALESCE(SUM(shipping_refund),0)) as shipping_refund,
-        ABS(COALESCE(SUM(adjustment.tax_refund),0)) + COALESCE(SUM(line_refund.tax_refund),0) as tax_refund,
-        refund_id as unique_key
+        ABS(COALESCE(SUM(adjustment.tax_refund),0)) + COALESCE(SUM(line_refund.tax_refund),0) as tax_refund
     FROM refund_staging
     LEFT JOIN adjustment USING(refund_id)
     LEFT JOIN line_refund USING(refund_id)
