@@ -109,7 +109,7 @@ WITH
 
     SELECT order_id, 
         refund_id,
-        processed_at as date,
+        processed_at as refund_date,
         ABS(COALESCE(SUM(adjustment.subtotal_refund),0)) as subtotal_order_refund,
         COALESCE(SUM(line_refund.subtotal_refund),0) as subtotal_line_refund,
         ABS(COALESCE(SUM(shipping_refund),0)) as shipping_refund,
