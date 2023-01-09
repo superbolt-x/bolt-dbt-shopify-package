@@ -109,4 +109,4 @@ WITH
     FROM refund_staging
     LEFT JOIN adjustment USING(refund_id)
     LEFT JOIN line_refund USING(refund_id)
-    GROUP BY order_id, refund_id, refund_processed_at
+    GROUP BY order_id, refund_id, date
