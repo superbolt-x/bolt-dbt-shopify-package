@@ -14,7 +14,6 @@ WITH
         shipping_refund,
         tax_refund
     FROM {{ ref('shopify_refunds') }}
-    GROUP BY date, order_id
     ),
 
     order_customer AS 
