@@ -243,7 +243,6 @@ WITH
 
     refund AS 
     (SELECT order_id, 
-        max(processed_at) as refund_proccessed_at,
         ABS(COALESCE(SUM(adjustment.subtotal_refund),0)) as subtotal_order_refund,
         COALESCE(SUM(line_refund.subtotal_refund),0) as subtotal_line_refund,
         ABS(COALESCE(SUM(shipping_refund),0)) as shipping_refund,
