@@ -10,7 +10,13 @@ WITH
         date as date,
         refund_id,
         order_id, 
-        COALESCE(subtotal_order_refund,0)+COALESCE(subtotal_line_refund,0) as subtotal_refund,
+        case
+            when subtotal_order_refund > 0 and subtotal_line_refund+tax_refund+shipping_refund=0 then subtotal_order_refund
+            when subtotal_line_refund > 0 and subtotal_order_refund > 0 then -tax_refund
+            when shipping_refund>0 and subtotal_order_refund>0 and subtotal_line_refund+tax_refund=0 then -shipping_refund
+            when subtotal_line_refund>0 and subtotal_order_refund=0 then subtotal_line_refund
+            else 0
+        end as subtotal_refund,
         shipping_refund,
         tax_refund
     FROM {{ ref('shopify_refunds') }}
