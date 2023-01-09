@@ -11,11 +11,11 @@ WITH
     (SELECT 
         '{{date_granularity}}' as date_granularity,
         {{date_granularity}} as date,
-        SUM(COALESCE(subtotal_order_refund,0)+COALESCE(subtotal_line_refund,0)) as subtotal_refund,
-        SUM(shipping_refund) as shipping_refund,
-        SUM(tax_refund) as tax_refund,
-        SUM(COALESCE(subtotal_order_refund,0)+COALESCE(subtotal_line_refund,0)+COALESCE(shipping_refund,0)+COALESCE(tax_refund,0)) as total_refund
-    FROM {{ ref('shopify_refunds') }}
+        SUM(COALESCE(subtotal_refund,0)) as subtotal_refund,
+        SUM(COALESCE(shipping_refund,0)) as shipping_refund,
+        SUM(COALESCE(tax_refund,0)) as tax_refund,
+        SUM(COALESCE(subtotal_refund,0)+COALESCE(shipping_refund,0)+COALESCE(tax_refund,0)) as total_refund
+    FROM {{ ref('shopify_daily_refunds') }}
     GROUP BY date_granularity, {{date_granularity}}
     ),
 
