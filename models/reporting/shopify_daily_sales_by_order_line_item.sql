@@ -8,12 +8,6 @@
 WITH orders AS 
     (SELECT *
     FROM {{ ref('shopify_daily_sales_by_order') }}
-    {% if is_incremental() -%}
-
-    -- this filter will only be applied on an incremental run
-    WHERE date >= (select max(date)-90 from {{ this }})
-
-    {% endif %}
     ),
 
     line_items AS 
