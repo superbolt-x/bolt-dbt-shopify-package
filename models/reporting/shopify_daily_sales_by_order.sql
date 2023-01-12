@@ -42,12 +42,7 @@ WITH giftcard_deduction AS
     AND cancelled_at IS NULL
     AND source_name NOT IN ({{ sales_channel_exclusion_list }})
     AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
-    {% if is_incremental() -%}
 
-    -- this filter will only be applied on an incremental run
-    AND order_date >= (select max(date)-90 from {{ this }})
-
-    {% endif %}
     ),
 
     customers AS 
