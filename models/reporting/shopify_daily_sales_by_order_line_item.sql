@@ -27,7 +27,8 @@ WITH orders AS
 
     sales AS 
     (SELECT 
-        date, 
+        date,
+        cancelled_at,
         order_id, 
         customer_id,
         customer_order_index,
