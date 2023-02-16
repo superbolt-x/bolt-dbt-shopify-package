@@ -29,7 +29,7 @@ WITH
         COALESCE(SUM(gross_revenue),0) as gross_sales,
         COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN gross_revenue END),0) as first_order_gross_sales,
         COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN gross_revenue END),0) as repeat_order_gross_sales,
-        COALESCE(SUM(total_discounts),0) as discounts,
+        COALESCE(SUM(subtotal_discount+shipping_discount),0) as discounts,
         COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN subtotal_discount+shipping_discount END),0) as first_order_discounts,
         COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN subtotal_discount+shipping_discount END),0) as repeat_order_discounts,
         SUM(COALESCE(gross_revenue,0) - COALESCE(total_discounts,0)) as subtotal_sales,
