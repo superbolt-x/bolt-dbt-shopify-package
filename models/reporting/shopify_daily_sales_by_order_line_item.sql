@@ -40,6 +40,7 @@ WITH orders AS
         product_title,
         variant_title,
         item_title,
+        index,
         gift_card,
         price,
         quantity,
