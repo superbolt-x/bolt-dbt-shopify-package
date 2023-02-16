@@ -29,7 +29,7 @@ WITH giftcard_deduction AS
         customer_id, 
         customer_order_index,
         gross_revenue - COALESCE(giftcard_deduction,0) as gross_revenue,
-        shipping_discount,
+        shipping_discounts as shipping_discount,
         total_discounts-shipping_discounts as subtotal_discount,
         discount_rate,
         subtotal_revenue,
