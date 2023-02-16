@@ -24,13 +24,14 @@ WITH giftcard_deduction AS
 
     orders AS 
     (SELECT 
-        order_date as date, 
+        order_date as date,
+        cancelled_at::date as cancelled_at,
         order_id, 
         customer_id, 
         customer_order_index,
         gross_revenue - COALESCE(giftcard_deduction,0) as gross_revenue,
-        shipping_discounts as shipping_discount,
-        total_discounts-shipping_discounts as subtotal_discount,
+        total_discounts-gross_revenue+subtotal_revenue as shipping_discount,
+        gross_revenue-subtotal_revenue as subtotal_discount,
         discount_rate,
         subtotal_revenue,
         total_tax, 
@@ -40,7 +41,7 @@ WITH giftcard_deduction AS
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)
     WHERE giftcard_only = 'false'
-    AND cancelled_at IS NULL
+    --AND cancelled_at IS NULL
     AND source_name NOT IN ({{ sales_channel_exclusion_list }})
     AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
 
