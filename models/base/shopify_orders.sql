@@ -75,6 +75,7 @@
 {%- set shipping_selected_fields = [
     "order_id",
     "title",
+    "price",
     "discounted_price"
 ] -%}
 
@@ -165,7 +166,9 @@ WITH
     shipping AS 
     (SELECT order_id, 
         LISTAGG(shipping_title, ', ') WITHIN GROUP (ORDER BY shipping_title) as shipping_title,
-        COALESCE(SUM(shipping_price),0) as shipping_price
+        COALESCE(SUM(shipping_price),0) as shipping_price,
+        COALESCE(SUM(discounted_shipping_price),0) as discounted_shipping_price,
+        COALESCE(SUM(shipping_price-discounted_shipping_price),0) as shipping_discounts
     FROM shipping_staging
     GROUP BY order_id
     ),
