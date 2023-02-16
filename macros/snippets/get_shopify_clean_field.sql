@@ -31,8 +31,11 @@
 
 {%- elif table_name == 'order_shipping_line' -%}
 
-    {%- if column_name == 'discounted_price' -%}
+    {%- if column_name == 'price' -%}
         {{column_name}} as shipping_price
+    
+    {%- if column_name == 'discounted_price' -%}
+        {{column_name}} as discounted_shipping_price
 
     {%- elif column_name != 'order_id' -%}
         {{column_name}} as shipping_{{column_name}}
