@@ -32,4 +32,4 @@ SELECT *,
     {{ get_date_parts('date') }}
 FROM refunds
 LEFT JOIN order_customer USING(order_id)
-WHERE cancelled_at is null
+--WHERE cancelled_at is null
