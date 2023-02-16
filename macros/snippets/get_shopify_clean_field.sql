@@ -70,6 +70,9 @@
 
     {%- elif column_name == 'title' -%}
         {{column_name}} as product_title
+    
+    {%- elif column_name == 'total_discount' -%}
+        {{column_name}} as line_{{column_name}}
 
     {%- else -%}
     {{column_name}}
