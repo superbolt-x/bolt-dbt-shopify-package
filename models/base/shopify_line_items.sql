@@ -12,7 +12,6 @@
     "variant_title",
     "name",
     "price",
-    "total_discount",
     "quantity",
     "sku",
     "fulfillable_quantity",
