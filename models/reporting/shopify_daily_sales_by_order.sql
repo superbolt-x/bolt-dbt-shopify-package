@@ -21,6 +21,14 @@ WITH giftcard_deduction AS
         FROM {{ ref('shopify_line_items') }}
         GROUP BY 1)
     ),
+    
+    line_discounts AS 
+    (SELECT 
+        order_id, 
+        sum(line_total_discount) as subtotal_discount
+    FROM {{ ref('shopify_line_items') }}
+        GROUP BY 1
+    ),
 
     orders AS 
     (SELECT 
@@ -29,7 +37,8 @@ WITH giftcard_deduction AS
         customer_id, 
         customer_order_index,
         gross_revenue - COALESCE(giftcard_deduction,0) as gross_revenue,
-        total_discounts,
+        subtotal_discount,
+        total_discounts-subtotal_discount as shipping_discount,
         discount_rate,
         subtotal_revenue,
         total_tax, 
@@ -38,6 +47,7 @@ WITH giftcard_deduction AS
         order_tags
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)
+    LEFT JOIN line_discounts USING(order_id)
     WHERE giftcard_only = 'false'
     AND cancelled_at IS NULL
     AND source_name NOT IN ({{ sales_channel_exclusion_list }})
