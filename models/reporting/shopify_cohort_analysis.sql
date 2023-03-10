@@ -40,7 +40,6 @@ WITH
 {% for date_granularity in date_granularity_list -%}
 SELECT *
     FROM cohort_arpu_and_repeat_rate_{{date_granularity}} LEFT JOIN cohort_size_{{date_granularity}} USING(cohort)
-    ORDER BY cohort, retention
 {% if not loop.last %}UNION ALL
 {% endif %}
 
