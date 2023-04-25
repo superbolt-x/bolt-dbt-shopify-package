@@ -24,9 +24,9 @@ WITH
         refund_date::date as date,
         refund_id,
         order_id, 
-        case when giftcard_only = 'true' then 0
+        sum(case when giftcard_only = 'true' then 0
              else subtotal_refund - amount_discrepancy_refund 
-        end as subtotal_refund,
+        end) as subtotal_refund,
         sum(amount_shipping_refund) as shipping_refund,
         sum(total_tax_refund) + sum(tax_amount_discrepancy_refund) + sum(tax_amount_shipping_refund) as tax_refund
     FROM {{ ref('shopify_refunds') }}
