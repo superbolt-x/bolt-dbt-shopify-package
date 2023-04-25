@@ -136,8 +136,8 @@ WITH
         quantity_refund,
         SUM(amount_discrepancy_refund) AS amount_discrepancy_refund,
         tax_amount_discrepancy_refund,
-        SUM(amount_shipping) AS amount_shipping_refund,
-        SUM(tax_amount_shipping) AS tax_amount_shipping_refund,
+        SUM(amount_shipping_refund) AS amount_shipping_refund,
+        SUM(tax_amount_shipping_refund) AS tax_amount_shipping_refund,
         subtotal_refund,
         total_tax_refund
     FROM refund_adjustment_line_refund
