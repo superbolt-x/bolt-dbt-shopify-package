@@ -1,5 +1,3 @@
---base.shopify_refunds
-
 {%- set schema_name,
         refund_table_name,
         adjustment_table_name,
