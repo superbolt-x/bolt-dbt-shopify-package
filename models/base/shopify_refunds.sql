@@ -24,6 +24,7 @@
 
 {%- set line_refund_selected_fields = [
     "refund_id",
+    "quantity",
     "subtotal",
     "total_tax"
 ] -%}
