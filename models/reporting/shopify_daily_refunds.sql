@@ -1,5 +1,3 @@
---reporting_shopify_daily_refunds
-
 {{ config (
     alias = target.database + '_shopify_daily_refunds'
 )}}
