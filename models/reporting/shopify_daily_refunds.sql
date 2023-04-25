@@ -24,7 +24,7 @@ WITH
         refund_date::date as date,
         refund_id,
         order_id, 
-        case when giftcard_only is true then 0
+        case when giftcard_only = 'true' then 0
              else subtotal_refund - amount_discrepancy_refund 
         end as subtotal_refund,
         sum(amount_shipping_refund) as shipping_refund,
