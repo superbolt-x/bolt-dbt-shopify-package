@@ -49,6 +49,7 @@ WITH
         COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN subtotal_revenue+COALESCE(total_tax,0)+COALESCE(shipping_price,0) END),0) as repeat_order_total_sales
     FROM {{ ref('shopify_daily_sales_by_order') }}
     WHERE cancelled_at is null
+    AND customer_id is not null
     GROUP BY date_granularity, {{date_granularity}})
     {%- if not loop.last %},{%- endif %}
     {%- endfor %}
