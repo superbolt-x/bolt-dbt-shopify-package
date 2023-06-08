@@ -78,7 +78,7 @@ WITH
     refunds_{{date_granularity}} AS 
     (SELECT 
         '{{date_granularity}}' as date_granularity,
-        {{date_granularity}} as date,
+        date,
         product_title,
         product_type,
         SUM(COALESCE(subtotal_refund,0)) as subtotal_refund,
