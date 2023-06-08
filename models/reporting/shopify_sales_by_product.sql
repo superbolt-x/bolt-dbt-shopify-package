@@ -19,7 +19,7 @@ WITH
         SUM(COALESCE(subtotal_refund,0)-COALESCE(shipping_refund,0)-COALESCE(tax_refund,0)) as total_refund
     FROM {{ ref('shopify_daily_refunds_by_product') }}
     WHERE cancelled_at is null
-    GROUP BY date_granularity, {{date_granularity}}
+    GROUP BY date_granularity, {{date_granularity}}, product_title, product_type
     ),
 
     orders AS 
@@ -98,9 +98,6 @@ WITH
         {{date_granularity}} as date,
         product_title,
         product_type,
-        COUNT(*) as orders,
-        COUNT(CASE WHEN customer_order_index = 1 THEN order_id END) as first_orders,
-        COUNT(CASE WHEN customer_order_index > 1 THEN order_id END) as repeat_orders,
         COALESCE(SUM(gross_revenue_item),0) as gross_sales,
         COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN gross_revenue_item END),0) as first_order_gross_sales,
         COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN gross_revenue_item END),0) as repeat_order_gross_sales,
