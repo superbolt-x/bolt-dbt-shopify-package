@@ -132,7 +132,7 @@ SELECT
     s.subtotal_sales - coalesce(r.subtotal_refund,0) as net_sales,
     s.total_sales - coalesce(r.total_refund,0) as total_net_sales
 FROM sales_{{date_granularity}} s
-LEFT JOIN refunds_{{date_granularity}} r USING(date_granularity, date)
+LEFT JOIN refunds_{{date_granularity}} r USING(date_granularity, date, product_title, product_type)
 {% if not loop.last %}UNION ALL
 {% endif %}
 
