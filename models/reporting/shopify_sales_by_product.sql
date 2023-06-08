@@ -5,23 +5,6 @@
 {%- set date_granularity_list = ['day','week','month','quarter','year'] -%}
 
 WITH 
-    {%- for date_granularity in date_granularity_list %}
-
-    refunds_{{date_granularity}} AS 
-    (SELECT 
-        '{{date_granularity}}' as date_granularity,
-        {{date_granularity}} as date,
-        product_title,
-        product_type,
-        SUM(COALESCE(subtotal_refund,0)) as subtotal_refund,
-        SUM(COALESCE(shipping_refund,0)) as shipping_refund,
-        SUM(COALESCE(tax_refund,0)) as tax_refund,
-        SUM(COALESCE(subtotal_refund,0)-COALESCE(shipping_refund,0)-COALESCE(tax_refund,0)) as total_refund
-    FROM {{ ref('shopify_daily_refunds_by_product') }}
-    WHERE cancelled_at is null
-    GROUP BY date_granularity, {{date_granularity}}, product_title, product_type
-    ),
-
     orders AS 
     (SELECT *
     FROM {{ ref('shopify_daily_sales_by_order') }}
@@ -90,6 +73,23 @@ WITH
         total_revenue_item,
         order_tags
     FROM sales_interm LEFT JOIN products USING(product_id)
+    ),
+    
+    {%- for date_granularity in date_granularity_list %}
+
+    refunds_{{date_granularity}} AS 
+    (SELECT 
+        '{{date_granularity}}' as date_granularity,
+        {{date_granularity}} as date,
+        product_title,
+        product_type,
+        SUM(COALESCE(subtotal_refund,0)) as subtotal_refund,
+        SUM(COALESCE(shipping_refund,0)) as shipping_refund,
+        SUM(COALESCE(tax_refund,0)) as tax_refund,
+        SUM(COALESCE(subtotal_refund,0)-COALESCE(shipping_refund,0)-COALESCE(tax_refund,0)) as total_refund
+    FROM {{ ref('shopify_daily_refunds_by_product') }}
+    WHERE cancelled_at is null
+    GROUP BY date_granularity, {{date_granularity}}, product_title, product_type
     ),
 
     sales_{{date_granularity}} AS 
