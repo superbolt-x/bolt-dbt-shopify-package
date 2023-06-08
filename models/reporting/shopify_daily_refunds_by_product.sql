@@ -31,7 +31,7 @@ WITH
         end) as subtotal_refund,
         sum(amount_shipping_refund) as shipping_refund,
         sum(total_tax_refund) + sum(tax_amount_discrepancy_refund) + sum(tax_amount_shipping_refund) as tax_refund
-    FROM {{ ref('shopify_refunds') }}
+    FROM {{ ref('shopify_refunds_by_product') }}
     LEFT JOIN giftcard_deduction USING(order_id)
     GROUP BY date, refund_id, order_id, product_title, product_type
     ),
