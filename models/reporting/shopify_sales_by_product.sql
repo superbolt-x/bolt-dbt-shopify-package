@@ -32,8 +32,6 @@ WITH
         product_id,
         variant_id,
         sku,
-        product_title,
-        variant_title,
         item_title,
         index,
         gift_card,
