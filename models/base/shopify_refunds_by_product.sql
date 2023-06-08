@@ -47,7 +47,7 @@
 
 {%- set product_selected_fields = [
     "id",
-    "title"
+    "title",
     "product_type"
 ] -%}
 
