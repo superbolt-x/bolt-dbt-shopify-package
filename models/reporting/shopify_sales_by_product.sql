@@ -87,7 +87,7 @@ WITH
         SUM(COALESCE(subtotal_refund,0)-COALESCE(shipping_refund,0)-COALESCE(tax_refund,0)) as total_refund
     FROM {{ ref('shopify_daily_refunds_by_product') }}
     WHERE cancelled_at is null
-    GROUP BY date_granularity, {{date_granularity}}, product_title, product_type
+    GROUP BY date_granularity, date, product_title, product_type
     ),
 
     sales_{{date_granularity}} AS 
@@ -119,7 +119,7 @@ WITH
     FROM sales
     WHERE cancelled_at is null
     AND customer_id is not null
-    GROUP BY date_granularity, {{date_granularity}}, product_title, product_type)
+    GROUP BY date_granularity, date, product_title, product_type)
     {%- if not loop.last %},{%- endif %}
     {%- endfor %}
 
