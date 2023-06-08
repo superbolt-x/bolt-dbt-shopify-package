@@ -93,7 +93,7 @@ WITH
     sales_{{date_granularity}} AS 
     (SELECT 
         '{{date_granularity}}' as date_granularity,
-        {{date_granularity}} as date,
+        DATE_TRUNC({{date_granularity}}, date) as date,
         product_title,
         product_type,
         COALESCE(SUM(gross_revenue_item),0) as gross_sales,
