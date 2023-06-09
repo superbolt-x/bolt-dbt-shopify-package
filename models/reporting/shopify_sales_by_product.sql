@@ -132,7 +132,7 @@ SELECT
     SUM(COALESCE(gross_sales,0)) as gross_sales,
     SUM(COALESCE(first_order_gross_sales,0)) as first_order_gross_sales,
     SUM(COALESCE(repeat_order_gross_sales,0)) as repeat_order_gross_sales,
-    SUM(COALESCE(discounts,0)) as discounts
+    SUM(COALESCE(discounts,0)) as discounts,
     SUM(COALESCE(subtotal_discounts,0)) as subtotal_discounts,
     SUM(COALESCE(shipping_discounts,0)) as shipping_discounts,
     SUM(COALESCE(first_order_discounts,0)) as first_order_discounts,
