@@ -125,14 +125,38 @@ WITH
 
 {% for date_granularity in date_granularity_list -%}
 SELECT 
-    s.*, 
-    coalesce(r.subtotal_refund,0) as subtotal_returns,
-    coalesce(r.shipping_refund,0) as shipping_returns,
-    coalesce(r.tax_refund,0) as tax_returns,
-    s.subtotal_sales - coalesce(r.subtotal_refund,0) as net_sales,
-    s.total_sales - coalesce(r.total_refund,0) as total_net_sales
+    date_granularity,
+    date,
+    product_title,
+    product_type,
+    SUM(COALESCE(gross_sales,0)) as gross_sales,
+    SUM(COALESCE(first_order_gross_sales,0)) as first_order_gross_sales,
+    SUM(COALESCE(repeat_order_gross_sales,0)) as repeat_order_gross_sales,
+    SUM(COALESCE(discounts,0)) as discounts
+    SUM(COALESCE(subtotal_discounts,0)) as subtotal_discounts,
+    SUM(COALESCE(shipping_discounts,0)) as shipping_discounts,
+    SUM(COALESCE(first_order_discounts,0)) as first_order_discounts,
+    SUM(COALESCE(first_order_subtotal_discounts,0)) as first_order_subtotal_discounts,
+    SUM(COALESCE(first_order_shipping_discounts,0)) as first_order_shipping_discounts,
+    SUM(COALESCE(repeat_order_discounts,0)) as repeat_order_discounts,
+    SUM(COALESCE(repeat_order_subtotal_discounts,0)) as repeat_order_subtotal_discounts,
+    SUM(COALESCE(repeat_order_shipping_discounts,0)) as repeat_order_shipping_discounts,
+    SUM(COALESCE(subtotal_sales,0)) as subtotal_sales,
+    SUM(COALESCE(first_order_subtotal_sales,0)) as first_order_subtotal_sales,
+    SUM(COALESCE(repeat_order_subtotal_sales,0)) as repeat_order_subtotal_sales,
+    SUM(COALESCE(gross_tax,0)) as gross_tax, 
+    SUM(COALESCE(gross_shipping,0)) as gross_shipping,
+    SUM(COALESCE(total_sales,0)) as total_sales,
+    SUM(COALESCE(first_order_total_sales,0)) as first_order_total_sales,
+    SUM(COALESCE(repeat_order_total_sales,0)) as repeat_order_total_sales,
+    SUM(coalesce(r.subtotal_refund,0)) as subtotal_returns,
+    SUM(coalesce(r.shipping_refund,0)) as shipping_returns,
+    SUM(coalesce(r.tax_refund,0)) as tax_returns,
+    SUM(COALESCE(s.subtotal_sales,0) - coalesce(r.subtotal_refund,0)) as net_sales,
+    SUM(COALESCE(s.total_sales,0) - coalesce(r.total_refund,0)) as total_net_sales
 FROM sales_{{date_granularity}} s
-LEFT JOIN refunds_{{date_granularity}} r USING(date_granularity, date, product_title, product_type)
+FULL JOIN refunds_{{date_granularity}} r USING(date_granularity, date, product_title, product_type)
+GROUP BY date_granularity, date, product_title, product_type
 {% if not loop.last %}UNION ALL
 {% endif %}
 
