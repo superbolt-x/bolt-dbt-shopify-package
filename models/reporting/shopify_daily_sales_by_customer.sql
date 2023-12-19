@@ -16,11 +16,6 @@ WITH orders AS
     GROUP BY date, customer_id
     ),
 
-    customers AS 
-    (SELECT customer_id, customer_acquisition_date
-    FROM {{ ref('shopify_customers') }} 
-    ),
-
     sales AS 
     (SELECT *, 
         subtotal_sales - COALESCE(returns,0) as net_sales
@@ -28,6 +23,7 @@ WITH orders AS
         (SELECT 
             date, 
             customer_id, 
+            customer_acquisition_date,
             COUNT(order_id) as orders,
             COUNT(CASE WHEN customer_order_index = 1 THEN order_id END) as first_orders,
             COUNT(CASE WHEN customer_order_index > 1 THEN order_id END) as repeat_orders,
@@ -47,5 +43,4 @@ WITH orders AS
 
 SELECT *,
     date||'_'||customer_id as unique_key
-FROM sales 
-LEFT JOIN customers USING(customer_id)
+FROM sales
