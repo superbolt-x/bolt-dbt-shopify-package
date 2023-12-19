@@ -23,7 +23,6 @@ WITH orders AS
         (SELECT 
             date, 
             customer_id, 
-            customer_acquisition_date,
             COUNT(order_id) as orders,
             COUNT(CASE WHEN customer_order_index = 1 THEN order_id END) as first_orders,
             COUNT(CASE WHEN customer_order_index > 1 THEN order_id END) as repeat_orders,
