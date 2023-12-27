@@ -26,6 +26,7 @@ WITH orders AS
         cancelled_at,
         order_id, 
         customer_id,
+        customer_acquisition_date,
         customer_order_index,
         order_tags, 
         order_line_id,
