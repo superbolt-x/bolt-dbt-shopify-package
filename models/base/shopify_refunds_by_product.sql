@@ -144,9 +144,11 @@ WITH
     (SELECT
         order_line_id, 
         product_title,
+        product_id,
         product_type,
         title,
         variant_title,
+        variant_id,
         price,
         quantity
     FROM order_line_staging LEFT JOIN product_staging USING(product_id)
@@ -155,7 +157,9 @@ WITH
     line_refund AS 
     (SELECT 
         refund_id,
+        product_id,
         product_title,
+        variant_id,
         variant_title,
         product_type,
         price*quantity as product_revenue,
@@ -165,7 +169,12 @@ WITH
         COALESCE(SUM(refund_subtotal),0) as subtotal_refund,
         COALESCE(SUM(refund_total_tax),0) as total_tax_refund
     FROM line_refund_staging LEFT JOIN order_line_product USING(order_line_id)
-    GROUP BY refund_id, product_title, product_type
+    GROUP BY refund_id,
+        product_id,
+        product_title,
+        variant_id,
+        variant_title,
+        product_type
     ),
 
     refund_adjustment AS
@@ -184,7 +193,10 @@ WITH
     (SELECT 
         order_id,
         refund_id,
+        product_id,
         product_title,
+        variant_id,
+        variant_title,
         product_type,
         refund_date,
         COALESCE(quantity_refund,0) AS quantity_refund,
@@ -206,12 +218,12 @@ WITH
         product_title,
         product_type,
         refund_date,
-        quantity_refund,
+        SUM(quantity_refund) AS quantity_refund,
         SUM(amount_discrepancy_refund) AS amount_discrepancy_refund,
-        tax_amount_discrepancy_refund,
+        SUM(tax_amount_discrepancy_refund) AS tax_amount_discrepancy_refund,
         SUM(amount_shipping_refund) AS amount_shipping_refund,
         SUM(tax_amount_shipping_refund) AS tax_amount_shipping_refund,
-        subtotal_refund,
-        total_tax_refund
+        SUM(subtotal_refund) AS subtotal_refund,
+        SUM(total_tax_refund) AS total_tax_refund
     FROM refund_adjustment_line_refund
-    GROUP BY order_id, refund_id, product_title, product_type, refund_date, quantity_refund, tax_amount_discrepancy_refund, subtotal_refund, total_tax_refund
+    GROUP BY order_id, refund_id, product_title, product_type, refund_date
