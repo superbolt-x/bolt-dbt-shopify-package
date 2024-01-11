@@ -6,17 +6,17 @@
 
 WITH 
     orders AS 
-    (SELECT *
+    (SELECT order_id, shipping_discount, subtotal_discount, 
     FROM {{ ref('shopify_daily_sales_by_order') }}
     ),
 
     line_items AS 
     (SELECT *
-    FROM {{ ref('shopify_line_items') }}
+    FROM {{ ref('shopify_daily_sales_by_order_line_item') }}
     ),
 
     products AS 
-    (SELECT DISTINCT product_id, product_title, product_type
+    (SELECT DISTINCT product_id, product_title, product_type, total_tax, shipping_price, subtotal_revenue, total_revenue
     FROM {{ ref('shopify_products') }}
     ),
 
