@@ -146,7 +146,6 @@ WITH
         product_title,
         product_id,
         product_type,
-        title,
         variant_title,
         variant_id,
         price,
