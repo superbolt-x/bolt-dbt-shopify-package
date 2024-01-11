@@ -6,7 +6,7 @@
 
 WITH 
     orders AS 
-    (SELECT order_id, shipping_discount, subtotal_discount, total_tax, shipping_price, subtotal_revenue, total_revenue
+    (SELECT order_id, shipping_discount, subtotal_discount, total_tax, shipping_price, subtotal_revenue, total_revenue, gross_revenue
     FROM {{ ref('shopify_daily_sales_by_order') }}
     ),
 
