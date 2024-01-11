@@ -6,7 +6,7 @@
 
 WITH 
     orders AS 
-    (SELECT order_id, shipping_discount, subtotal_discount, 
+    (SELECT order_id, shipping_discount, subtotal_discount
     FROM {{ ref('shopify_daily_sales_by_order') }}
     ),
 
