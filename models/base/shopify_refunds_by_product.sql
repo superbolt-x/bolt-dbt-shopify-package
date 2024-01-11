@@ -42,12 +42,17 @@
 
 {%- set order_line_selected_fields = [
     "id",
-    "product_id"
+    "product_id",
+    "variant_id",
+    "title",
+    "variant_title",
+    "name",
+    "price",
+    "quantity"
 ] -%}
 
 {%- set product_selected_fields = [
     "id",
-    "title",
     "product_type"
 ] -%}
 
@@ -139,7 +144,11 @@ WITH
     (SELECT
         order_line_id, 
         product_title,
-        product_type
+        product_type,
+        title,
+        variant_title,
+        price,
+        quantity
     FROM order_line_staging LEFT JOIN product_staging USING(product_id)
     ),
 
@@ -147,7 +156,10 @@ WITH
     (SELECT 
         refund_id,
         product_title,
+        variant_title,
         product_type,
+        price*quantity as product_revenue,
+        SUM(price*quantity) OVER (PARTITION BY refund_id) as line_revenue,
         COUNT(*) OVER (PARTITION BY refund_id) as product_count,
         COALESCE(SUM(refund_quantity),0) as quantity_refund, 
         COALESCE(SUM(refund_subtotal),0) as subtotal_refund,
@@ -176,10 +188,10 @@ WITH
         product_type,
         refund_date,
         COALESCE(quantity_refund,0) AS quantity_refund,
-        amount_discrepancy_refund::FLOAT/product_count::FLOAT AS amount_discrepancy_refund,
-        tax_amount_discrepancy_refund::FLOAT/product_count::FLOAT AS tax_amount_discrepancy_refund,
-        amount_shipping_refund::FLOAT/product_count::FLOAT AS amount_shipping_refund,
-        tax_amount_shipping_refund::FLOAT/product_count::FLOAT AS tax_amount_shipping_refund,
+        amount_discrepancy_refund::FLOAT*(product_revenue::FLOAT/line_revenue::FLOAT) AS amount_discrepancy_refund,
+        tax_amount_discrepancy_refund::FLOAT*(product_revenue::FLOAT/line_revenue::FLOAT) AS tax_amount_discrepancy_refund,
+        amount_shipping_refund::FLOAT*(product_revenue::FLOAT/line_revenue::FLOAT) AS amount_shipping_refund,
+        tax_amount_shipping_refund::FLOAT*(product_revenue::FLOAT/line_revenue::FLOAT) AS tax_amount_shipping_refund,
         COALESCE(subtotal_refund,0) AS subtotal_refund,
         COALESCE(total_tax_refund,0) AS total_tax_refund
         FROM refund_adjustment
