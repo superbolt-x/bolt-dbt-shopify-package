@@ -161,6 +161,8 @@ WITH
         variant_id,
         variant_title,
         product_type,
+        price,
+        quantity,
         price*quantity as product_revenue,
         SUM(price*quantity) OVER (PARTITION BY refund_id) as line_revenue,
         COUNT(*) OVER (PARTITION BY refund_id) as product_count,
@@ -173,7 +175,9 @@ WITH
         product_title,
         variant_id,
         variant_title,
-        product_type
+        product_type,
+        price,
+        quantity
     ),
 
     refund_adjustment AS
