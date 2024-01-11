@@ -164,7 +164,7 @@ WITH
         price,
         quantity,
         price*quantity as product_revenue,
-        SUM(price*quantity) OVER (PARTITION BY refund_id) as line_revenue,
+        SUM(COALESCE(price,0)*COALESCE(quantity,0)) OVER (PARTITION BY refund_id) as line_revenue,
         COUNT(*) OVER (PARTITION BY refund_id) as product_count,
         COALESCE(SUM(refund_quantity),0) as quantity_refund, 
         COALESCE(SUM(refund_subtotal),0) as subtotal_refund,
@@ -203,10 +203,10 @@ WITH
         product_type,
         refund_date,
         COALESCE(quantity_refund,0) AS quantity_refund,
-        amount_discrepancy_refund::FLOAT*(product_revenue::FLOAT/line_revenue::FLOAT) AS amount_discrepancy_refund,
-        tax_amount_discrepancy_refund::FLOAT*(product_revenue::FLOAT/line_revenue::FLOAT) AS tax_amount_discrepancy_refund,
-        amount_shipping_refund::FLOAT*(product_revenue::FLOAT/line_revenue::FLOAT) AS amount_shipping_refund,
-        tax_amount_shipping_refund::FLOAT*(product_revenue::FLOAT/line_revenue::FLOAT) AS tax_amount_shipping_refund,
+        amount_discrepancy_refund::FLOAT*(COALESCE(product_revenue::FLOAT/NULLIF(line_revenue::FLOAT,0),0)) AS amount_discrepancy_refund,
+        tax_amount_discrepancy_refund::FLOAT*(COALESCE(product_revenue::FLOAT/NULLIF(line_revenue::FLOAT,0),0)) AS tax_amount_discrepancy_refund,
+        amount_shipping_refund::FLOAT*(COALESCE(product_revenue::FLOAT/NULLIF(line_revenue::FLOAT,0),0)) AS amount_shipping_refund,
+        tax_amount_shipping_refund::FLOAT*(COALESCE(product_revenue::FLOAT/NULLIF(line_revenue::FLOAT,0),0)) AS tax_amount_shipping_refund,
         COALESCE(subtotal_refund,0) AS subtotal_refund,
         COALESCE(total_tax_refund,0) AS total_tax_refund
         FROM refund_adjustment
