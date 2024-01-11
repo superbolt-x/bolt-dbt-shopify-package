@@ -47,7 +47,7 @@ WITH
         (price * quantity) * COALESCE(shipping_price / NULLIF(gross_revenue,0)) as shipping_price_item,
         (price * quantity) * COALESCE(subtotal_revenue / NULLIF(gross_revenue,0)) as subtotal_revenue_item,
         (price * quantity) * COALESCE(total_revenue / NULLIF(gross_revenue,0)) as total_revenue_item,
-        quantity - COALESCE(refund_quantity,0) as net_quantity
+        COALESCE(net_quantity,0) as net_quantity
     FROM orders 
     LEFT JOIN line_items USING(order_id)
     ),
