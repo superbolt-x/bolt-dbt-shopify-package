@@ -18,7 +18,7 @@
     "fulfillment_status",
     "gift_card",
     "index",
-    "total_discount",
+    "total_discount"
 
 ] -%}
 
