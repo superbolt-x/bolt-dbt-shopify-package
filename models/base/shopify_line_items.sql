@@ -17,7 +17,8 @@
     "fulfillable_quantity",
     "fulfillment_status",
     "gift_card",
-    "index"
+    "index",
+    "total_discount",
 
 ] -%}
 
@@ -78,6 +79,7 @@ SELECT
     item_title,
     case when (fulfillment_status is null or fulfillment_status = '') and refund_quantity > 0 then 0 else price end as price,
     case when (fulfillment_status is null or fulfillment_status = '') and refund_quantity > 0 then 0 else quantity end as quantity,
+    total_discount as line_item_discount,
     sku,
     fulfillable_quantity,
     fulfillment_status,
