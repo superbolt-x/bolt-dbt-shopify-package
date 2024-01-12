@@ -68,7 +68,23 @@ WITH order_line_raw_data AS
     GROUP BY order_line_id
     )
 
-SELECT *,
+SELECT 
+    order_line_id,
+    order_id,
+    product_id,
+    variant_id,
+    product_title,
+    variant_title,
+    item_title,
+    case when (fulfillment_status is null or fulfillment_status = '') and refund_quantity > 0 then 0 else price end as price,
+    case when (fulfillment_status is null or fulfillment_status = '') and refund_quantity > 0 then 0 else quantity end as quantity,
+    sku,
+    fulfillable_quantity,
+    fulfillment_status,
+    gift_card,
+    index,
+    refund_quantity,
+    refund_subtotal,
     quantity - refund_quantity as net_quantity,
     price * quantity - refund_subtotal as net_subtotal,
     order_line_id as unique_key
