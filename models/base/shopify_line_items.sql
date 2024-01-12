@@ -60,3 +60,5 @@ SELECT *,
     quantity - refund_quantity as net_quantity,
     price * quantity - refund_subtotal as net_subtotal,
     order_line_id as unique_key
+FROM items 
+LEFT JOIN refund USING(order_line_id)
