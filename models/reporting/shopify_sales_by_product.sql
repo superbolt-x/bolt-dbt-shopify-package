@@ -82,7 +82,7 @@ WITH
     refunds_{{date_granularity}} AS 
     (SELECT 
         '{{date_granularity}}' as date_granularity,
-        DATE_TRUNC('{{date_granularity}}', date) as date,
+        DATE_TRUNC('{{date_granularity}}', date) as dg,
         product_title,
         product_type,
         SUM(COALESCE(subtotal_refund,0)) as subtotal_refund,
@@ -91,13 +91,13 @@ WITH
         SUM(COALESCE(subtotal_refund,0)-COALESCE(shipping_refund,0)-COALESCE(tax_refund,0)) as total_refund
     FROM {{ ref('shopify_daily_refunds_by_product') }}
     WHERE cancelled_at is null
-    GROUP BY date_granularity, date, product_title, product_type
+    GROUP BY date_granularity, dg, product_title, product_type
     ),
 
     sales_{{date_granularity}} AS 
     (SELECT 
         '{{date_granularity}}' as date_granularity,
-        DATE_TRUNC('{{date_granularity}}', date) as date,
+        DATE_TRUNC('{{date_granularity}}', date) as dg,
         product_title,
         product_type,
         COALESCE(COUNT(DISTINCT(order_id)),0) as orders,
@@ -132,13 +132,14 @@ WITH
     FROM sales
     WHERE cancelled_at is null
     AND customer_id is not null
-    GROUP BY date_granularity, date, product_title, product_type)
+    GROUP BY date_granularity, dg, product_title, product_type)
     {%- if not loop.last %},{%- endif %}
     {%- endfor %}
 
+{% for date_granularity in date_granularity_list -%}
 SELECT 
     date_granularity,
-    date,
+    dg as date,
     product_title,
     product_type,
     SUM(COALESCE(orders,0)) as orders,
@@ -175,181 +176,8 @@ SELECT
     SUM(coalesce(r.tax_refund,0)) as tax_returns,
     SUM(COALESCE(s.subtotal_sales,0) - coalesce(r.subtotal_refund,0)) as net_sales,
     SUM(COALESCE(s.total_sales,0) - coalesce(r.total_refund,0)) as total_net_sales
-FROM sales_day s
-FULL JOIN refunds_day r USING(date_granularity, date, product_title, product_type)
+FROM sales_{{date_granularity}} s
+FULL JOIN refunds_{{date_granularity}} r USING(date_granularity, dg, product_title, product_type)
 GROUP BY date_granularity, date, product_title, product_type
-UNION ALL
-SELECT 
-    date_granularity,
-    date,
-    product_title,
-    product_type,
-    SUM(COALESCE(orders,0)) as orders,
-    SUM(COALESCE(first_orders,0)) as first_orders,
-    SUM(COALESCE(repeat_orders,0)) as repeat_orders,
-    SUM(COALESCE(quantity,0)) as quantity,
-    SUM(COALESCE(first_order_quantity,0)) as first_order_quantity,
-    SUM(COALESCE(repeat_order_quantity,0)) as repeat_order_quantity,
-    SUM(COALESCE(net_quantity,0)) as net_quantity,
-    SUM(COALESCE(first_order_net_quantity,0)) as first_order_net_quantity,
-    SUM(COALESCE(repeat_order_net_quantity,0)) as repeat_order_net_quantity,
-    SUM(COALESCE(gross_sales,0)) as gross_sales,
-    SUM(COALESCE(first_order_gross_sales,0)) as first_order_gross_sales,
-    SUM(COALESCE(repeat_order_gross_sales,0)) as repeat_order_gross_sales,
-    SUM(COALESCE(discounts,0)) as discounts,
-    SUM(COALESCE(subtotal_discounts,0)) as subtotal_discounts,
-    SUM(COALESCE(shipping_discounts,0)) as shipping_discounts,
-    SUM(COALESCE(first_order_discounts,0)) as first_order_discounts,
-    SUM(COALESCE(first_order_subtotal_discounts,0)) as first_order_subtotal_discounts,
-    SUM(COALESCE(first_order_shipping_discounts,0)) as first_order_shipping_discounts,
-    SUM(COALESCE(repeat_order_discounts,0)) as repeat_order_discounts,
-    SUM(COALESCE(repeat_order_subtotal_discounts,0)) as repeat_order_subtotal_discounts,
-    SUM(COALESCE(repeat_order_shipping_discounts,0)) as repeat_order_shipping_discounts,
-    SUM(COALESCE(subtotal_sales,0)) as subtotal_sales,
-    SUM(COALESCE(first_order_subtotal_sales,0)) as first_order_subtotal_sales,
-    SUM(COALESCE(repeat_order_subtotal_sales,0)) as repeat_order_subtotal_sales,
-    SUM(COALESCE(gross_tax,0)) as gross_tax, 
-    SUM(COALESCE(gross_shipping,0)) as gross_shipping,
-    SUM(COALESCE(total_sales,0)) as total_sales,
-    SUM(COALESCE(first_order_total_sales,0)) as first_order_total_sales,
-    SUM(COALESCE(repeat_order_total_sales,0)) as repeat_order_total_sales,
-    SUM(coalesce(r.subtotal_refund,0)) as subtotal_returns,
-    SUM(coalesce(r.shipping_refund,0)) as shipping_returns,
-    SUM(coalesce(r.tax_refund,0)) as tax_returns,
-    SUM(COALESCE(s.subtotal_sales,0) - coalesce(r.subtotal_refund,0)) as net_sales,
-    SUM(COALESCE(s.total_sales,0) - coalesce(r.total_refund,0)) as total_net_sales
-FROM sales_week s
-FULL JOIN refunds_week r USING(date_granularity, date, product_title, product_type)
-GROUP BY date_granularity, date, product_title, product_type
-UNION ALL
-SELECT 
-    date_granularity,
-    date,
-    product_title,
-    product_type,
-    SUM(COALESCE(orders,0)) as orders,
-    SUM(COALESCE(first_orders,0)) as first_orders,
-    SUM(COALESCE(repeat_orders,0)) as repeat_orders,
-    SUM(COALESCE(quantity,0)) as quantity,
-    SUM(COALESCE(first_order_quantity,0)) as first_order_quantity,
-    SUM(COALESCE(repeat_order_quantity,0)) as repeat_order_quantity,
-    SUM(COALESCE(net_quantity,0)) as net_quantity,
-    SUM(COALESCE(first_order_net_quantity,0)) as first_order_net_quantity,
-    SUM(COALESCE(repeat_order_net_quantity,0)) as repeat_order_net_quantity,
-    SUM(COALESCE(gross_sales,0)) as gross_sales,
-    SUM(COALESCE(first_order_gross_sales,0)) as first_order_gross_sales,
-    SUM(COALESCE(repeat_order_gross_sales,0)) as repeat_order_gross_sales,
-    SUM(COALESCE(discounts,0)) as discounts,
-    SUM(COALESCE(subtotal_discounts,0)) as subtotal_discounts,
-    SUM(COALESCE(shipping_discounts,0)) as shipping_discounts,
-    SUM(COALESCE(first_order_discounts,0)) as first_order_discounts,
-    SUM(COALESCE(first_order_subtotal_discounts,0)) as first_order_subtotal_discounts,
-    SUM(COALESCE(first_order_shipping_discounts,0)) as first_order_shipping_discounts,
-    SUM(COALESCE(repeat_order_discounts,0)) as repeat_order_discounts,
-    SUM(COALESCE(repeat_order_subtotal_discounts,0)) as repeat_order_subtotal_discounts,
-    SUM(COALESCE(repeat_order_shipping_discounts,0)) as repeat_order_shipping_discounts,
-    SUM(COALESCE(subtotal_sales,0)) as subtotal_sales,
-    SUM(COALESCE(first_order_subtotal_sales,0)) as first_order_subtotal_sales,
-    SUM(COALESCE(repeat_order_subtotal_sales,0)) as repeat_order_subtotal_sales,
-    SUM(COALESCE(gross_tax,0)) as gross_tax, 
-    SUM(COALESCE(gross_shipping,0)) as gross_shipping,
-    SUM(COALESCE(total_sales,0)) as total_sales,
-    SUM(COALESCE(first_order_total_sales,0)) as first_order_total_sales,
-    SUM(COALESCE(repeat_order_total_sales,0)) as repeat_order_total_sales,
-    SUM(coalesce(r.subtotal_refund,0)) as subtotal_returns,
-    SUM(coalesce(r.shipping_refund,0)) as shipping_returns,
-    SUM(coalesce(r.tax_refund,0)) as tax_returns,
-    SUM(COALESCE(s.subtotal_sales,0) - coalesce(r.subtotal_refund,0)) as net_sales,
-    SUM(COALESCE(s.total_sales,0) - coalesce(r.total_refund,0)) as total_net_sales
-FROM sales_month s
-FULL JOIN refunds_month r USING(date_granularity, date, product_title, product_type)
-GROUP BY date_granularity, date, product_title, product_type
-UNION ALL
-SELECT 
-    date_granularity,
-    date,
-    product_title,
-    product_type,
-    SUM(COALESCE(orders,0)) as orders,
-    SUM(COALESCE(first_orders,0)) as first_orders,
-    SUM(COALESCE(repeat_orders,0)) as repeat_orders,
-    SUM(COALESCE(quantity,0)) as quantity,
-    SUM(COALESCE(first_order_quantity,0)) as first_order_quantity,
-    SUM(COALESCE(repeat_order_quantity,0)) as repeat_order_quantity,
-    SUM(COALESCE(net_quantity,0)) as net_quantity,
-    SUM(COALESCE(first_order_net_quantity,0)) as first_order_net_quantity,
-    SUM(COALESCE(repeat_order_net_quantity,0)) as repeat_order_net_quantity,
-    SUM(COALESCE(gross_sales,0)) as gross_sales,
-    SUM(COALESCE(first_order_gross_sales,0)) as first_order_gross_sales,
-    SUM(COALESCE(repeat_order_gross_sales,0)) as repeat_order_gross_sales,
-    SUM(COALESCE(discounts,0)) as discounts,
-    SUM(COALESCE(subtotal_discounts,0)) as subtotal_discounts,
-    SUM(COALESCE(shipping_discounts,0)) as shipping_discounts,
-    SUM(COALESCE(first_order_discounts,0)) as first_order_discounts,
-    SUM(COALESCE(first_order_subtotal_discounts,0)) as first_order_subtotal_discounts,
-    SUM(COALESCE(first_order_shipping_discounts,0)) as first_order_shipping_discounts,
-    SUM(COALESCE(repeat_order_discounts,0)) as repeat_order_discounts,
-    SUM(COALESCE(repeat_order_subtotal_discounts,0)) as repeat_order_subtotal_discounts,
-    SUM(COALESCE(repeat_order_shipping_discounts,0)) as repeat_order_shipping_discounts,
-    SUM(COALESCE(subtotal_sales,0)) as subtotal_sales,
-    SUM(COALESCE(first_order_subtotal_sales,0)) as first_order_subtotal_sales,
-    SUM(COALESCE(repeat_order_subtotal_sales,0)) as repeat_order_subtotal_sales,
-    SUM(COALESCE(gross_tax,0)) as gross_tax, 
-    SUM(COALESCE(gross_shipping,0)) as gross_shipping,
-    SUM(COALESCE(total_sales,0)) as total_sales,
-    SUM(COALESCE(first_order_total_sales,0)) as first_order_total_sales,
-    SUM(COALESCE(repeat_order_total_sales,0)) as repeat_order_total_sales,
-    SUM(coalesce(r.subtotal_refund,0)) as subtotal_returns,
-    SUM(coalesce(r.shipping_refund,0)) as shipping_returns,
-    SUM(coalesce(r.tax_refund,0)) as tax_returns,
-    SUM(COALESCE(s.subtotal_sales,0) - coalesce(r.subtotal_refund,0)) as net_sales,
-    SUM(COALESCE(s.total_sales,0) - coalesce(r.total_refund,0)) as total_net_sales
-FROM sales_quarter s
-FULL JOIN refunds_quarter r USING(date_granularity, date, product_title, product_type)
-GROUP BY date_granularity, date, product_title, product_type
-UNION ALL
-SELECT 
-    date_granularity,
-    date,
-    product_title,
-    product_type,
-    SUM(COALESCE(orders,0)) as orders,
-    SUM(COALESCE(first_orders,0)) as first_orders,
-    SUM(COALESCE(repeat_orders,0)) as repeat_orders,
-    SUM(COALESCE(quantity,0)) as quantity,
-    SUM(COALESCE(first_order_quantity,0)) as first_order_quantity,
-    SUM(COALESCE(repeat_order_quantity,0)) as repeat_order_quantity,
-    SUM(COALESCE(net_quantity,0)) as net_quantity,
-    SUM(COALESCE(first_order_net_quantity,0)) as first_order_net_quantity,
-    SUM(COALESCE(repeat_order_net_quantity,0)) as repeat_order_net_quantity,
-    SUM(COALESCE(gross_sales,0)) as gross_sales,
-    SUM(COALESCE(first_order_gross_sales,0)) as first_order_gross_sales,
-    SUM(COALESCE(repeat_order_gross_sales,0)) as repeat_order_gross_sales,
-    SUM(COALESCE(discounts,0)) as discounts,
-    SUM(COALESCE(subtotal_discounts,0)) as subtotal_discounts,
-    SUM(COALESCE(shipping_discounts,0)) as shipping_discounts,
-    SUM(COALESCE(first_order_discounts,0)) as first_order_discounts,
-    SUM(COALESCE(first_order_subtotal_discounts,0)) as first_order_subtotal_discounts,
-    SUM(COALESCE(first_order_shipping_discounts,0)) as first_order_shipping_discounts,
-    SUM(COALESCE(repeat_order_discounts,0)) as repeat_order_discounts,
-    SUM(COALESCE(repeat_order_subtotal_discounts,0)) as repeat_order_subtotal_discounts,
-    SUM(COALESCE(repeat_order_shipping_discounts,0)) as repeat_order_shipping_discounts,
-    SUM(COALESCE(subtotal_sales,0)) as subtotal_sales,
-    SUM(COALESCE(first_order_subtotal_sales,0)) as first_order_subtotal_sales,
-    SUM(COALESCE(repeat_order_subtotal_sales,0)) as repeat_order_subtotal_sales,
-    SUM(COALESCE(gross_tax,0)) as gross_tax, 
-    SUM(COALESCE(gross_shipping,0)) as gross_shipping,
-    SUM(COALESCE(total_sales,0)) as total_sales,
-    SUM(COALESCE(first_order_total_sales,0)) as first_order_total_sales,
-    SUM(COALESCE(repeat_order_total_sales,0)) as repeat_order_total_sales,
-    SUM(coalesce(r.subtotal_refund,0)) as subtotal_returns,
-    SUM(coalesce(r.shipping_refund,0)) as shipping_returns,
-    SUM(coalesce(r.tax_refund,0)) as tax_returns,
-    SUM(COALESCE(s.subtotal_sales,0) - coalesce(r.subtotal_refund,0)) as net_sales,
-    SUM(COALESCE(s.total_sales,0) - coalesce(r.total_refund,0)) as total_net_sales
-FROM sales_year s
-FULL JOIN refunds_year r USING(date_granularity, date, product_title, product_type)
-GROUP BY date_granularity, date, product_title, product_type
-
-
-
+{% if not loop.last %}UNION ALL
+{% endif %}
