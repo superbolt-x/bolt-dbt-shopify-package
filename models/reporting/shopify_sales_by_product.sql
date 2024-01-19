@@ -16,7 +16,7 @@ WITH
     ),
 
     products AS 
-    (SELECT DISTINCT product_id, product_title, product_type
+    (SELECT DISTINCT product_id, variant_id, product_title, product_type
     FROM {{ ref('shopify_products') }}
     ),
 
