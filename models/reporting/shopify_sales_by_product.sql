@@ -72,7 +72,7 @@ WITH
         shipping_price_item, 
         total_revenue_item,
         order_tags
-    FROM sales_interm LEFT JOIN products USING(product_id)
+    FROM sales_interm LEFT JOIN products USING(product_id,variant_id)
     ),
     
     {%- for date_granularity in date_granularity_list %}
