@@ -181,3 +181,4 @@ FULL JOIN refunds_{{date_granularity}} r USING(date_granularity, dg, product_tit
 GROUP BY date_granularity, date, product_title, product_type
 {% if not loop.last %}UNION ALL
 {% endif %}
+ {%- endfor %}
