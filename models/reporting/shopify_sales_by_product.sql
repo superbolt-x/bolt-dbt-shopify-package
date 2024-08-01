@@ -94,8 +94,8 @@ WITH
         SUM(CASE WHEN customer_order_index = 1 THEN COALESCE(tax_refund,0) END) as first_order_tax_refund,
         SUM(CASE WHEN customer_order_index > 1 THEN COALESCE(tax_refund,0) END) as repeat_order_tax_refund,
         SUM(COALESCE(tax_refund,0)) as tax_refund,
-        SUM(COALESCE(first_order_subtotal_refund,0)-COALESCE(first_order_shipping_refund,0)-COALESCE(first_order_tax_refund,0)) as first_order_total_refund,
-        SUM(COALESCE(repeat_order_subtotal_refund,0)-COALESCE(repeat_order_shipping_refund,0)-COALESCE(repeat_order_tax_refund,0)) as repeat_order_total_refund,
+        first_order_subtotal_refund-first_order_shipping_refund-first_order_tax_refund as first_order_total_refund,
+        repeat_order_subtotal_refund-repeat_order_shipping_refund-repeat_order_tax_refund as repeat_order_total_refund,
         SUM(COALESCE(subtotal_refund,0)-COALESCE(shipping_refund,0)-COALESCE(tax_refund,0)) as total_refund
     FROM {{ ref('shopify_daily_refunds_by_product') }}
     WHERE cancelled_at is null
