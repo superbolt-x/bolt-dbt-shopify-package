@@ -75,8 +75,8 @@ SELECT
     coalesce(r.repeat_order_shipping_refund,0) as repeat_order_shipping_returns,
     coalesce(r.repeat_order_tax_refund,0) as repeat_order_tax_returns,
     s.subtotal_sales - coalesce(r.subtotal_refund,0) as net_sales,
-    s.first_order_subtotal_sales - coalesce(r.first_order_subtotal_returns,0) as first_order_net_sales,
-    s.repeat_order_subtotal_sales - coalesce(r.repeat_order_subtotal_returns,0) as repeat_order_net_sales,
+    s.first_order_subtotal_sales - coalesce(first_order_subtotal_returns,0) as first_order_net_sales,
+    s.repeat_order_subtotal_sales - coalesce(repeat_order_subtotal_returns,0) as repeat_order_net_sales,
     s.first_order_total_sales - coalesce(r.first_order_total_refund,0) as first_order_total_net_sales,
     s.repeat_order_total_sales - coalesce(r.repeat_order_total_refund,0) as repeat_order_total_net_sales,
     s.total_sales - coalesce(r.total_refund,0) as total_net_sales
