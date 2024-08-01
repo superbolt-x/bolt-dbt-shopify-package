@@ -37,7 +37,7 @@ WITH
     ),
 
     order_customer AS 
-    (SELECT order_id, customer_id, cancelled_at
+    (SELECT order_id, customer_id, cancelled_at, customer_order_index
     FROM {{ ref('shopify_orders') }}
     )
 
