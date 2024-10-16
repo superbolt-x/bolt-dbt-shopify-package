@@ -39,7 +39,7 @@ WITH
     order_customer AS 
     (SELECT order_id, customer_id, cancelled_at, customer_order_index
     FROM {{ ref('shopify_orders') }}
-    AND source_name NOT IN ({{ sales_channel_exclusion_list }})
+    WHERE source_name NOT IN ({{ sales_channel_exclusion_list }})
     AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
     AND (email !~* '{{ var("email_address_exclusion")}}' OR email IS NULL)
     )
