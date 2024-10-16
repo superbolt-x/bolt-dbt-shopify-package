@@ -45,6 +45,7 @@ WITH giftcard_deduction AS
     --AND cancelled_at IS NULL
     AND source_name NOT IN ({{ sales_channel_exclusion_list }})
     AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
+    AND (email !~* '{{ var("email_address_exclusion")}}' OR email IS NULL)
 
     )
 
