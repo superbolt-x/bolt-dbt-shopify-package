@@ -46,7 +46,9 @@ WITH giftcard_deduction AS
     AND source_name NOT IN ({{ sales_channel_exclusion_list }})
     AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
     AND (email !~* '{{ var("email_address_exclusion")}}' OR email IS NULL)
-
+    {%- if var('shipping_countries_included') != 'dummy' %}
+    AND shipping_address_country_code IN ({{ shipping_country_inclusion_list }})
+    {%- endif %}
     )
 
 SELECT *,
