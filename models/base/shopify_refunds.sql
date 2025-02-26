@@ -164,4 +164,5 @@ WITH
         subtotal_refund,
         total_tax_refund
     FROM refund_adjustment_line_refund
+    LEFT JOIN order_staging USING(order_id)
     GROUP BY 1,2,3,4,5,7,10,11
