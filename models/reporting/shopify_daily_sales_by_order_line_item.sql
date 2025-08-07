@@ -16,8 +16,9 @@ WITH orders AS
     ),
 
     products AS 
-    (SELECT product_id, variant_id, product_type, product_tags
+    (SELECT product_id, product_type, product_tags, count(*)
     FROM {{ ref('shopify_products') }}
+    GROUP BY 1,2,3
     ),
 
     sales AS 
@@ -52,4 +53,4 @@ WITH orders AS
 SELECT *,
     date||'_'||order_line_id as unique_key
 FROM sales 
-LEFT JOIN products USING(product_id, variant_id)
+LEFT JOIN (SELECT product_id, product_type, product_tags FROM products) USING(product_id)
