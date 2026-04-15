@@ -8,7 +8,7 @@ WITH
     {%- for date_granularity in date_granularity_list %}
 
     refunds_{{date_granularity}} AS 
-    (SELECT 
+    SELECT 
         '{{date_granularity}}' as date_granularity,
         {{date_granularity}} as date,
         SUM(CASE WHEN customer_order_index = 1 THEN COALESCE(subtotal_refund,0) END) as first_order_subtotal_refund,
