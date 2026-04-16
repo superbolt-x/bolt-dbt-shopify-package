@@ -1,88 +1,149 @@
-{{ config (
+{{ config(
     alias = target.database + '_shopify_sales'
-)}}
+) }}
 
 {%- set date_granularity_list = ['day','week','month','quarter','year'] -%}
 
-WITH 
-    {%- for date_granularity in date_granularity_list %}
 
-    refunds_{{date_granularity}} AS 
-    (SELECT 
-        '{{date_granularity}}' as date_granularity,
-        {{date_granularity}} as date,
-        StestM(CASE WHEN customer_order_index = 1 THEN COALESCE(subtotal_refund,0) END) as first_order_subtotal_refund,
-        SUM(CASE WHEN customer_order_index > 1 THEN COALESCE(subtotal_refund,0) END) as repeat_order_subtotal_refund,
-        SUM(COALESCE(subtotal_refund,0)) as subtotal_refund,
-        SUM(CASE WHEN customer_order_index = 1 THEN COALESCE(shipping_refund,0) END) as first_order_shipping_refund,
-        SUM(CASE WHEN customer_order_index > 1 THEN COALESCE(shipping_refund,0) END) as repeat_order_shipping_refund,
-        SUM(COALESCE(shipping_refund,0)) as shipping_refund,
-        SUM(CASE WHEN customer_order_index = 1 THEN COALESCE(tax_refund,0) END) as first_order_tax_refund,
-        SUM(CASE WHEN customer_order_index > 1 THEN COALESCE(tax_refund,0) END) as repeat_order_tax_refund,
-        SUM(COALESCE(tax_refund,0)) as tax_refund,
-        first_order_subtotal_refund-first_order_shipping_refund-first_order_tax_refund as first_order_total_refund,
-        repeat_order_subtotal_refund-repeat_order_shipping_refund-repeat_order_tax_refund as repeat_order_total_refund,
-        SUM(COALESCE(subtotal_refund,0)-COALESCE(shipping_refund,0)-COALESCE(tax_refund,0)) as total_refund
-    FROM {{ ref('shopify_daily_refunds') }}
-    WHERE cancelled_at is null
-    GROUP BY date_granularity, {{date_granularity}}
-    ),
+WITH shopify_base AS (
 
-    sales_{{date_granularity}} AS 
-    (SELECT 
-        '{{date_granularity}}' as date_granularity,
-        {{date_granularity}} as date,
-        COUNT(*) as orders,
-        COUNT(CASE WHEN customer_order_index = 1 THEN order_id END) as first_orders,
-        COUNT(CASE WHEN customer_order_index > 1 THEN order_id END) as repeat_orders,
-        COALESCE(SUM(gross_revenue),0) as gross_sales,
-        COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN gross_revenue END),0) as first_order_gross_sales,
-        COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN gross_revenue END),0) as repeat_order_gross_sales,
-        COALESCE(SUM(subtotal_discount+shipping_discount),0) as discounts,
-        COALESCE(SUM(subtotal_discount),0) as subtotal_discounts,
-        COALESCE(SUM(shipping_discount),0) as shipping_discounts,
-        COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN subtotal_discount+shipping_discount END),0) as first_order_discounts,
-        COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN subtotal_discount END),0) as first_order_subtotal_discounts,
-        COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN shipping_discount END),0) as first_order_shipping_discounts,
-        COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN subtotal_discount+shipping_discount END),0) as repeat_order_discounts,
-        COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN subtotal_discount END),0) as repeat_order_subtotal_discounts,
-        COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN shipping_discount END),0) as repeat_order_shipping_discounts,
-        SUM(COALESCE(gross_revenue,0) - COALESCE(subtotal_discount,0)) as subtotal_sales,
-        COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN COALESCE(gross_revenue,0) - COALESCE(subtotal_discount,0) END),0) as first_order_subtotal_sales,
-        COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN COALESCE(gross_revenue,0) - COALESCE(subtotal_discount,0) END),0) as repeat_order_subtotal_sales,
-        COALESCE(SUM(total_tax),0) as gross_tax, 
-        COALESCE(SUM(shipping_price),0) as gross_shipping,
-        COALESCE(SUM(subtotal_revenue+COALESCE(total_tax,0)+COALESCE(shipping_price,0)),0) as total_sales,
-        COALESCE(SUM(CASE WHEN customer_order_index = 1 THEN subtotal_revenue+COALESCE(total_tax,0)+COALESCE(shipping_price,0) END),0) as first_order_total_sales,
-        COALESCE(SUM(CASE WHEN customer_order_index > 1 THEN subtotal_revenue+COALESCE(total_tax,0)+COALESCE(shipping_price,0) END),0) as repeat_order_total_sales
+    SELECT
+        date,
+        day,
+        week,
+        month,
+        quarter,
+        year,
+        order_id,
+        customer_id,
+        customer_order_index,
+
+        -- SALES
+        COALESCE(gross_revenue, 0) AS gross_revenue,
+        COALESCE(subtotal_revenue, 0) AS subtotal_revenue,
+
+        -- DISCOUNTS
+        COALESCE(subtotal_discount, 0) AS subtotal_discount,
+        COALESCE(shipping_discount, 0) AS shipping_discount,
+
+        -- SHIPPING
+        COALESCE(shipping_price, 0) AS shipping_price,
+
+        -- TAX
+        COALESCE(total_tax, 0) AS total_tax,
+
+        -- REFUNDS
+        COALESCE(subtotal_refund, 0) AS subtotal_refund,
+        COALESCE(shipping_refund, 0) AS shipping_refund,
+        COALESCE(tax_refund, 0) AS tax_refund
+
     FROM {{ ref('shopify_daily_sales_by_order') }}
-    WHERE cancelled_at is null
-    AND customer_id is not null
-    GROUP BY date_granularity, {{date_granularity}})
-    {%- if not loop.last %},{%- endif %}
-    {%- endfor %}
+    LEFT JOIN {{ ref('shopify_daily_refunds') }}
+        USING (order_id, date)
 
-{% for date_granularity in date_granularity_list -%}
-SELECT 
-    s.*, 
-    coalesce(r.subtotal_refund,0) as subtotal_returns,
-    coalesce(r.shipping_refund,0) as shipping_returns,
-    coalesce(r.tax_refund,0) as tax_returns,
-    coalesce(r.first_order_subtotal_refund,0) as first_order_subtotal_returns,
-    coalesce(r.first_order_shipping_refund,0) as first_order_shipping_returns,
-    coalesce(r.first_order_tax_refund,0) as first_order_tax_returns,
-    coalesce(r.repeat_order_subtotal_refund,0) as repeat_order_subtotal_returns,
-    coalesce(r.repeat_order_shipping_refund,0) as repeat_order_shipping_returns,
-    coalesce(r.repeat_order_tax_refund,0) as repeat_order_tax_returns,
-    s.subtotal_sales - coalesce(r.subtotal_refund,0) as net_sales,
-    s.first_order_subtotal_sales - coalesce(first_order_subtotal_returns,0) as first_order_net_sales,
-    s.repeat_order_subtotal_sales - coalesce(repeat_order_subtotal_returns,0) as repeat_order_net_sales,
-    s.first_order_total_sales - coalesce(r.first_order_total_refund,0) as first_order_total_net_sales,
-    s.repeat_order_total_sales - coalesce(r.repeat_order_total_refund,0) as repeat_order_total_net_sales,
-    s.total_sales - coalesce(r.total_refund,0) as total_net_sales
-FROM sales_{{date_granularity}} s
-LEFT JOIN refunds_{{date_granularity}} r USING(date_granularity, date)
-{% if not loop.last %}UNION ALL
-{% endif %}
+    WHERE cancelled_at IS NULL
+      AND customer_id IS NOT NULL
+),
 
-{%- endfor %}
+shopify_aggregated AS (
+
+    {% for granularity in date_granularity_list %}
+
+    SELECT
+
+        '{{ granularity }}' AS date_granularity,
+        {{ granularity }} AS date,
+
+        customer_order_index,
+
+        /* =========================
+           ORDERS
+        ========================= */
+        COUNT(DISTINCT order_id) AS orders,
+        COUNT(DISTINCT CASE WHEN customer_order_index = 1 THEN order_id END) AS new_orders,
+        COUNT(DISTINCT CASE WHEN customer_order_index > 1 THEN order_id END) AS returning_orders,
+
+        /* =========================
+           GROSS SALES
+        ========================= */
+        SUM(gross_revenue) AS gross_sales,
+        SUM(CASE WHEN customer_order_index = 1 THEN gross_revenue END) AS gross_sales_new,
+        SUM(CASE WHEN customer_order_index > 1 THEN gross_revenue END) AS gross_sales_returning,
+
+        /* =========================
+           DISCOUNTS
+        ========================= */
+        SUM(subtotal_discount) AS subtotal_discounts,
+        SUM(CASE WHEN customer_order_index = 1 THEN subtotal_discount END) AS subtotal_discounts_new,
+        SUM(CASE WHEN customer_order_index > 1 THEN subtotal_discount END) AS subtotal_discounts_returning,
+
+        /* =========================
+           REFUNDS
+        ========================= */
+        SUM(subtotal_refund) AS subtotal_refunds,
+        SUM(CASE WHEN customer_order_index = 1 THEN subtotal_refund END) AS subtotal_refunds_new,
+        SUM(CASE WHEN customer_order_index > 1 THEN subtotal_refund END) AS subtotal_refunds_returning,
+
+        /* SHIPPING */
+        SUM(shipping_price) AS shipping_revenue,
+        SUM(shipping_discount) AS shipping_discounts,
+        SUM(shipping_refund) AS shipping_refunds,
+
+        SUM(CASE WHEN customer_order_index = 1 THEN shipping_price END) AS shipping_revenue_new,
+        SUM(CASE WHEN customer_order_index > 1 THEN shipping_price END) AS shipping_revenue_returning,
+
+        /* TAX */
+        SUM(total_tax) AS tax_sales,
+        SUM(tax_refund) AS tax_refunds,
+
+        SUM(CASE WHEN customer_order_index = 1 THEN total_tax END) AS tax_sales_new,
+        SUM(CASE WHEN customer_order_index > 1 THEN total_tax END) AS tax_sales_returning
+
+    FROM shopify_base
+
+    GROUP BY 1,2,3
+
+    {% if not loop.last %}UNION ALL{% endif %}
+
+    {% endfor %}
+),
+
+shopify_final AS (
+
+    SELECT
+
+        *,
+
+        /* =========================
+           NET SALES CORE
+        ========================= */
+        (gross_sales - subtotal_discounts + subtotal_refunds) AS net_sales,
+        (gross_sales_new - subtotal_discounts_new + subtotal_refunds_new) AS net_sales_new,
+        (gross_sales_returning - subtotal_discounts_returning + subtotal_refunds_returning) AS net_sales_returning,
+
+        /* =========================
+           TOTAL NET SALES (FULL DEFINITION)
+        ========================= */
+        (
+            (gross_sales - subtotal_discounts + subtotal_refunds)
+            + shipping_revenue - shipping_discounts + shipping_refunds
+            + tax_sales + tax_refunds
+        ) AS total_net_sales,
+
+        (
+            (gross_sales_new - subtotal_discounts_new + subtotal_refunds_new)
+            + shipping_revenue_new
+            + tax_sales_new
+        ) AS total_net_sales_new,
+
+        (
+            (gross_sales_returning - subtotal_discounts_returning + subtotal_refunds_returning)
+            + shipping_revenue_returning
+            + tax_sales_returning
+        ) AS total_net_sales_returning
+
+    FROM shopify_aggregated
+)
+
+SELECT *
+FROM shopify_final
