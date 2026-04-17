@@ -9,11 +9,6 @@ WITH shopify_base AS (
 
     SELECT
         date,
-        day,
-        week,
-        month,
-        quarter,
-        year,
         order_id,
         customer_id,
         customer_order_index,
