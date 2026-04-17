@@ -8,14 +8,6 @@
 
 WITH 
     
-shopify_orders AS (
-SELECT 
-    order_id 
-    FROM shopify_base.shopify_orders 
-    -- WHERE source_name NOT IN ('Chewy','faire')
-),
-
- 
 sales_and_refunds_data AS(
     SELECT 
     date, 
@@ -71,7 +63,6 @@ sales_and_refunds_data AS(
     0 as repeat_order_tax_refunds,
     
     FROM {{ ref('shopify_daily_sales_by_order') }}
-    WHERE order_id IN (SELECT * FROM shopify_orders)
     UNION ALL
     SELECT 
     date, 
@@ -127,8 +118,6 @@ sales_and_refunds_data AS(
     COUNT(CASE WHEN customer_order_index > 1 THEN tax_refund END) as repeat_order_tax_refunds,
     
     FROM {{ ref('shopify_daily_refunds') }}
-    WHERE order_id IN (SELECT * FROM shopify_orders)),
-
     
 
 shopify_data AS (
