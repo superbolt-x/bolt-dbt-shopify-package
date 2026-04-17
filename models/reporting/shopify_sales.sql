@@ -5,7 +5,7 @@
 {%- set date_granularity_list = ['day','week','month','quarter','year'] -%}
 
 
-WITH shopify_base AS (
+WITH shopify_base AS 
 
     SELECT
         date,
