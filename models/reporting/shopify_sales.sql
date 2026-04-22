@@ -106,9 +106,9 @@ WITH sales_and_refunds_data AS (
         0 AS repeat_order_shipping_discounts,
 
         -- Shipping Refunds
-        COALESCE(shipping_refund,0) AS shipping_refunds,
-        CASE WHEN customer_order_index = 1 THEN COALESCE(shipping_refund,0) ELSE 0 END AS first_order_shipping_refunds,
-        CASE WHEN customer_order_index > 1 THEN COALESCE(shipping_refund,0) ELSE 0 END AS repeat_order_shipping_refunds,
+        COALESCE(-shipping_refund,0) AS shipping_refunds,
+        CASE WHEN customer_order_index = 1 THEN COALESCE(-shipping_refund,0) ELSE 0 END AS first_order_shipping_refunds,
+        CASE WHEN customer_order_index > 1 THEN COALESCE(-shipping_refund,0) ELSE 0 END AS repeat_order_shipping_refunds,
 
         -- Tax Sales
         0 AS tax_sales,
@@ -179,42 +179,42 @@ SELECT
     SUM(repeat_order_tax_refunds) AS repeat_order_tax_refunds,
 
     -- Net Sales
-    SUM(gross_revenue) - SUM(subtotal_discount) + SUM(subtotal_refund) AS net_sales,
-    SUM(first_order_gross_revenue) - SUM(first_order_subtotal_discount) + SUM(first_order_subtotal_refund) AS first_order_net_sales,
-    SUM(repeat_order_gross_revenue) - SUM(repeat_order_subtotal_discount) + SUM(repeat_order_subtotal_refund) AS repeat_order_net_sales,
+    SUM(gross_revenue) - SUM(subtotal_discount) - SUM(subtotal_refund) AS net_sales,
+    SUM(first_order_gross_revenue) - SUM(first_order_subtotal_discount) - SUM(first_order_subtotal_refund) AS first_order_net_sales,
+    SUM(repeat_order_gross_revenue) - SUM(repeat_order_subtotal_discount) - SUM(repeat_order_subtotal_refund) AS repeat_order_net_sales,
 
     -- Total Net Sales
     (
         SUM(gross_revenue)
         - SUM(subtotal_discount)
-        + SUM(subtotal_refund)
+        - SUM(subtotal_refund)
         + SUM(shipping_revenue)
         - SUM(shipping_discounts)
-        + SUM(shipping_refunds)
+        - SUM(shipping_refunds)
         + SUM(tax_sales)
-        + SUM(tax_refunds)
+        - SUM(tax_refunds)
     ) AS total_net_sales,
 
     (
         SUM(first_order_gross_revenue)
         - SUM(first_order_subtotal_discount)
-        + SUM(first_order_subtotal_refund)
+        - SUM(first_order_subtotal_refund)
         + SUM(first_order_shipping_revenue)
         - SUM(first_order_shipping_discounts)
-        + SUM(first_order_shipping_refunds)
+        - SUM(first_order_shipping_refunds)
         + SUM(first_order_tax_sales)
-        + SUM(first_order_tax_refunds)
+        - SUM(first_order_tax_refunds)
     ) AS first_order_total_net_sales,
 
     (
         SUM(repeat_order_gross_revenue)
         - SUM(repeat_order_subtotal_discount)
-        + SUM(repeat_order_subtotal_refund)
+        - SUM(repeat_order_subtotal_refund)
         + SUM(repeat_order_shipping_revenue)
         - SUM(repeat_order_shipping_discounts)
-        + SUM(repeat_order_shipping_refunds)
+        - SUM(repeat_order_shipping_refunds)
         + SUM(repeat_order_tax_sales)
-        + SUM(repeat_order_tax_refunds)
+        - SUM(repeat_order_tax_refunds)
     ) AS repeat_order_total_net_sales
 
 FROM sales_and_refunds_data
