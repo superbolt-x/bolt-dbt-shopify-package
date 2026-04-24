@@ -22,7 +22,7 @@
 
 {%- set item_discount_selected_fields = [
 "order_line_id",
-"amount",
+"amount"
 ] -%}
 
 {%- set item_refund_selected_fields = [
@@ -48,7 +48,7 @@ WITH order_line_raw_data AS
     FROM order_line_raw_data r
         left join {{ ref('shopify_orders') }} s
         on r.order_line_id = s.order_id
-    )
+    ),
 
 discount_raw_data AS 
         ({{ dbt_utils.union_relations(relations = discount_raw_tables) }}),
@@ -86,8 +86,24 @@ order_line_refund_raw_data AS
     GROUP BY order_line_id
     )
 
-SELECT *,
-        amount as discount_amount
+SELECT 
+        order_line_id,
+        id,
+        product_id,
+        variant_id,
+        title,
+        variant_title,
+        name,
+        price,
+        quantity,
+        sku,
+        fulfillable_quantity,
+        fulfillment_status,
+        gift_card,
+        index,
+        amount as discount_amount,
+        refund_quantity,
+        refund_subtotal
 FROM items 
 left join discount using (order_line_id)
 left join refund using (order_line_id)
