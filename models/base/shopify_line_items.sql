@@ -45,7 +45,9 @@ WITH order_line_raw_data AS
         {{ get_shopify_clean_field(item_table_name, column)}}
         {%- if not loop.last %},{% endif %}
         {% endfor %}
-    FROM order_line_raw_data
+    FROM order_line_raw_data r
+        left join {{ ref('shopify_orders') }} s
+        on r.order_line_id = s.order_id
     )
 
 discount_raw_data AS 
@@ -78,7 +80,9 @@ order_line_refund_raw_data AS
         order_line_id,
         SUM(refund_quantity) as refund_quantity,
         SUM(refund_subtotal) as refund_subtotal
-    FROM refund_raw
+    FROM refund_raw r
+        left join {{ ref('shopify_refunds') }} s
+        on r.order_line_id = s.order_id
     GROUP BY order_line_id
     )
 
