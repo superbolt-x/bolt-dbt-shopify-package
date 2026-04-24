@@ -1,7 +1,8 @@
 {%- set schema_name,
         item_table_name, 
-        item_discount_table_name
-        = 'shopify_raw', 'order_line', 'discount_allocation' -%}
+        item_discount_table_name,
+        item_fund_table_name
+        = 'shopify_raw', 'order_line', 'discount_allocation', 'order_line_refund' -%}
 {%- set item_selected_fields = [
     "order_id",
     "id",
@@ -24,8 +25,17 @@
 "amount",
 ] -%}
 
+{%- set item_refund_selected_fields = [
+"order_line_id",
+"refund_id",
+"quantity",
+"subtotal"
+] -%}
+
 {%- set order_line_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line') -%}
-{%- set order_line_discount_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'discount_allocation') -%}
+{%- set discount_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'discount_allocation') -%}
+{%- set order_line_refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line_refund') -%}
+
 
 WITH order_line_raw_data AS 
     ({{ dbt_utils.union_relations(relations = order_line_raw_tables) }}),
@@ -38,8 +48,8 @@ WITH order_line_raw_data AS
     FROM order_line_raw_data
     )
 
-order_line_discount_raw_data AS 
-        ({{ dbt_utils.union_relations(relations = order_line_discount_raw_tables) }}),
+discount_raw_data AS 
+        ({{ dbt_utils.union_relations(relations = discount_raw_tables) }}),
 
     discount AS 
     (SELECT 
@@ -48,11 +58,33 @@ order_line_discount_raw_data AS
         {{ get_shopify_clean_field(item_discount_table_name, column)}}
         {%- if not loop.last %},{% endif %}
         {% endfor %}
-    FROM order_line_discount_raw_data
+    FROM discount_raw_data
     ),
+
+order_line_refund_raw_data AS 
+    ({{ dbt_utils.union_relations(relations = order_line_refund_raw_tables) }}),
+        
+    refund_raw AS 
+    (SELECT 
+        
+        {% for column in item_refund_selected_fields -%}
+        {{ get_shopify_clean_field(item_fund_table_name, column)}}
+        {%- if not loop.last %},{% endif %}
+        {% endfor %}
+    FROM order_line_refund_raw_data
+    ),
+        refund AS 
+    (SELECT 
+        order_line_id,
+        SUM(refund_quantity) as refund_quantity,
+        SUM(refund_subtotal) as refund_subtotal
+    FROM refund_raw
+    GROUP BY order_line_id
+    )
 
 SELECT *,
         amount as discount_amount
 FROM items 
 left join discount using (order_line_id)
+left join refund using (order_line_id)
 
