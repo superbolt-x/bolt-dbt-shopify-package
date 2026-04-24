@@ -51,7 +51,8 @@ order_line_discount_raw_data AS
     FROM order_line_discount_raw_data
     ),
 
-SELECT *
+SELECT *,
+        amount as discount_amount
 FROM items 
 left join discount using (order_line_id)
 
