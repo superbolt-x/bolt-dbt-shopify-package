@@ -48,6 +48,9 @@ WITH giftcard_deduction AS
     --AND cancelled_at IS NULL
     AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
     AND (email !~* '{{ var("email_address_exclusion")}}' OR email IS NULL)
+    {%- if var('financial_status') != 'dummy' %}
+    AND financial_status ~* '{{ var("financial_status")}}'
+    {%- endif %}
     {%- if var('shipping_countries_excluded') != 'dummy' %}
     AND (shipping_address_country_code NOT IN ({{ shipping_country_exclusion_list }}) OR shipping_address_country_code IS NULL)
     {%- endif %}
