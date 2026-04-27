@@ -33,7 +33,7 @@
 -%}
 
 {%- set shipping_country_exclusion_values =
-    shipping_country_exclusion.split('|') | reject('equalto','') | list
+    shipping_countries_excluded.split('|') | reject('equalto','') | list
 -%}
 
 {%- set shipping_country_exclusion_list =
@@ -42,7 +42,7 @@
 -%}
 
 {%- set shipping_country_inclusion_values =
-    shipping_country_inclusion.split('|') | reject('equalto','') | list
+    shipping_countries_included.split('|') | reject('equalto','') | list
 -%}
 
 {%- set shipping_country_inclusion_list =
