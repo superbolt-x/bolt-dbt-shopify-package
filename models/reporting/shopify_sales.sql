@@ -63,7 +63,13 @@ WITH sales_and_refunds_data AS (
         -- Net Orders
         CASE WHEN COALESCE(gross_revenue,0) > 0 THEN 1 END AS net_orders,
         CASE WHEN COALESCE(gross_revenue,0) > 0 AND customer_order_index = 1 THEN 1 ELSE 0 END AS first_net_orders,
-        CASE WHEN COALESCE(gross_revenue,0) > 0 AND customer_order_index > 1 THEN 1 ELSE 0 END AS repeat_net_orders
+        CASE WHEN COALESCE(gross_revenue,0) > 0 AND customer_order_index > 1 THEN 1 ELSE 0 END AS repeat_net_orders,
+
+        -- Customers
+        COUNT(DISTINCT customer_id) AS customers,
+        COUNT(DISTINCT CASE WHEN customer_order_index = 1 THEN customer_id END) AS new_customers,
+        COUNT(DISTINCT CASE WHEN customer_order_index > 1 THEN customer_id END) AS repeat_customers
+        
 
     FROM {{ ref('shopify_daily_sales_by_order') }}
     WHERE cancelled_at IS NULL
@@ -128,7 +134,12 @@ WITH sales_and_refunds_data AS (
         -- Net Orders
         0 AS net_orders,
         0 AS first_net_orders,
-        0 AS repeat_net_orders
+        0 AS repeat_net_orders,
+
+        -- Customers
+        0 AS customers,
+        0 AS new_customers,
+        0 AS repeat_customers
 
     FROM {{ ref('shopify_daily_refunds') }}
     WHERE cancelled_at IS NULL
@@ -255,7 +266,12 @@ SELECT
     -- Net Orders
     SUM(net_orders) AS net_orders,
     SUM(first_net_orders) AS first_net_orders,
-    SUM(repeat_net_orders) AS repeat_net_orders
+    SUM(repeat_net_orders) AS repeat_net_orders,
+
+    -- Customers
+    SUM(customers) AS customers,
+    SUM(new_customers) AS new_customers,
+    SUM(repeat_customers) AS repeat_customers
     
 
 FROM sales_and_refunds_data
