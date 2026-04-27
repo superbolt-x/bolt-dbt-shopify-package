@@ -2,54 +2,127 @@
     alias = target.database + '_shopify_daily_refunds'
 )}}
 
-{%- set sales_channel_exclusion_list = "'"~var("sales_channel_exclusion").split('|')|join("','")~"'" -%}
-{%- set shipping_country_inclusion_list = "'"~var("shipping_countries_included").split('|')|join("','")~"'" -%}
+{# -------------------- VARS -------------------- #}
+{%- set sales_channel_exclusion = var("sales_channel_exclusion", "") -%}
+{%- set sales_channel_inclusion = var("sales_channel_inclusion", "") -%}
+{%- set shipping_countries_excluded = var("shipping_countries_excluded", "") -%}
+{%- set shipping_countries_included = var("shipping_countries_included", "") -%}
+{%- set order_tags_keyword_exclusion = var("order_tags_keyword_exclusion", "") -%}
+{%- set order_tags_keyword_inclusion = var("order_tags_keyword_inclusion", "") -%}
+{%- set email_address_exclusion = var("email_address_exclusion", "") -%}
 
-WITH
+{# -------------------- LISTS -------------------- #}
+{%- set sales_channel_exclusion_list =
+    "'" ~ sales_channel_exclusion.split('|') | reject('equalto','') | join("','") ~ "'"
+    if sales_channel_exclusion | trim else none
+-%}
 
-    giftcard_deduction AS 
-    (SELECT 
-        order_id, 
-        CASE WHEN items_count = giftcard_count THEN 'true' ELSE 'false' END as giftcard_only,
+{%- set sales_channel_inclusion_list =
+    "'" ~ sales_channel_inclusion.split('|') | reject('equalto','') | join("','") ~ "'"
+    if sales_channel_inclusion | trim else none
+-%}
+
+{%- set shipping_country_exclusion_list =
+    "'" ~ shipping_countries_excluded.split('|') | reject('equalto','') | join("','") ~ "'"
+    if shipping_countries_excluded | trim else none
+-%}
+
+{%- set shipping_country_inclusion_list =
+    "'" ~ shipping_countries_included.split('|') | reject('equalto','') | join("','") ~ "'"
+    if shipping_countries_included | trim else none
+-%}
+
+WITH giftcard_deduction AS (
+    SELECT 
+        order_id,
+        CASE WHEN items_count = giftcard_count THEN 'true' ELSE 'false' END AS giftcard_only,
         giftcard_deduction
-    FROM 
-        (SELECT 
-            order_id, 
-            SUM(quantity) as items_count,
-            COALESCE(SUM(CASE WHEN gift_card is true THEN quantity END),0) as giftcard_count,
-            COALESCE(SUM(CASE WHEN gift_card is true THEN price * quantity END),0) as giftcard_deduction
+    FROM (
+        SELECT 
+            order_id,
+            SUM(quantity) AS items_count,
+            COALESCE(SUM(CASE WHEN gift_card IS TRUE THEN quantity END),0) AS giftcard_count,
+            COALESCE(SUM(CASE WHEN gift_card IS TRUE THEN price * quantity END),0) AS giftcard_deduction
         FROM {{ ref('shopify_line_items') }}
-        GROUP BY 1)
-    ),
+        GROUP BY 1
+    )
+),
 
-    refunds AS 
-    (SELECT 
-        refund_date::date as date,
+refunds AS (
+    SELECT 
+        refund_date::date AS date,
         refund_id,
-        order_id, 
-        sum(case when giftcard_only = 'true' then 0
-             else subtotal_refund - amount_discrepancy_refund 
-        end) as subtotal_refund,
-        sum(amount_shipping_refund) as shipping_refund,
-        sum(total_tax_refund) + sum(tax_amount_discrepancy_refund) + sum(tax_amount_shipping_refund) as tax_refund
+        order_id,
+
+        SUM(
+            CASE 
+                WHEN giftcard_only = 'true' THEN 0
+                ELSE subtotal_refund - amount_discrepancy_refund
+            END
+        ) AS subtotal_refund,
+
+        SUM(amount_shipping_refund) AS shipping_refund,
+
+        SUM(total_tax_refund)
+        + SUM(tax_amount_discrepancy_refund)
+        + SUM(tax_amount_shipping_refund) AS tax_refund,
+
+        shipping_address_country_code,
+        source_name,
+        order_tags,
+        email
     FROM {{ ref('shopify_refunds') }}
     LEFT JOIN giftcard_deduction USING(order_id)
-    {%- if var('shipping_countries_included') != 'dummy' %}
-    WHERE shipping_address_country_code IN ({{ shipping_country_inclusion_list }})
-    {%- endif %}
-    GROUP BY date, refund_id, order_id
-    ),
 
-    order_customer AS 
-    (SELECT order_id, customer_id, cancelled_at, customer_order_index
+    {# -------- SHIPPING COUNTRY FILTER -------- #}
+    {% if shipping_country_inclusion_list %}
+        WHERE shipping_address_country_code IN ({{ shipping_country_inclusion_list }})
+    {% elif shipping_country_exclusion_list %}
+        WHERE shipping_address_country_code NOT IN ({{ shipping_country_exclusion_list }})
+    {% else %}
+        WHERE 1=1
+    {% endif %}
+
+    GROUP BY refund_date::date, refund_id, order_id,
+             shipping_address_country_code, source_name, order_tags, email
+),
+
+order_customer AS (
+    SELECT 
+        order_id,
+        customer_id,
+        cancelled_at,
+        customer_order_index,
+        source_name,
+        order_tags,
+        email
     FROM {{ ref('shopify_orders') }}
-    WHERE source_name NOT IN ({{ sales_channel_exclusion_list }})
-    AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
-    AND (email !~* '{{ var("email_address_exclusion")}}' OR email IS NULL)
-    )
+
+    {# -------- SALES CHANNEL -------- #}
+    {% if sales_channel_inclusion_list %}
+        WHERE source_name IN ({{ sales_channel_inclusion_list }})
+    {% elif sales_channel_exclusion_list %}
+        WHERE source_name NOT IN ({{ sales_channel_exclusion_list }})
+    {% else %}
+        WHERE 1=1
+    {% endif %}
+
+    {# -------- TAGS -------- #}
+    {% if order_tags_keyword_exclusion | trim %}
+        AND (order_tags !~* '{{ order_tags_keyword_exclusion }}' OR order_tags IS NULL)
+    {% endif %}
+
+    {% if order_tags_keyword_inclusion | trim %}
+        AND order_tags ~* '{{ order_tags_keyword_inclusion }}'
+    {% endif %}
+
+    {# -------- EMAIL -------- #}
+    {% if email_address_exclusion | trim %}
+        AND (email !~* '{{ email_address_exclusion }}' OR email IS NULL)
+    {% endif %}
+)
 
 SELECT *,
     {{ get_date_parts('date') }}
 FROM refunds
 LEFT JOIN order_customer USING(order_id)
---WHERE cancelled_at is null
