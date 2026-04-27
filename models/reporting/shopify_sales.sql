@@ -58,7 +58,12 @@ WITH sales_and_refunds_data AS (
         -- Tax Refunds
         0 AS tax_refunds,
         0 AS first_order_tax_refunds,
-        0 AS repeat_order_tax_refunds
+        0 AS repeat_order_tax_refunds,
+
+        -- Net Orders
+        CASE WHEN COALESCE(gross_revenue,0) > 0 THEN 1 END AS net_orders,
+        CASE WHEN COALESCE(gross_revenue,0) > 0 AND customer_order_index = 1 THEN 1 ELSE 0 END AS first_net_orders,
+        CASE WHEN COALESCE(gross_revenue,0) > 0 AND customer_order_index > 1 THEN 1 ELSE 0 END AS repeat_net_orders
 
     FROM {{ ref('shopify_daily_sales_by_order') }}
     WHERE cancelled_at IS NULL
@@ -118,7 +123,12 @@ WITH sales_and_refunds_data AS (
         -- Tax Refunds
         COALESCE(tax_refund,0) AS tax_refunds,
         CASE WHEN customer_order_index = 1 THEN COALESCE(tax_refund,0) ELSE 0 END AS first_order_tax_refunds,
-        CASE WHEN customer_order_index > 1 THEN COALESCE(tax_refund,0) ELSE 0 END AS repeat_order_tax_refunds
+        CASE WHEN customer_order_index > 1 THEN COALESCE(tax_refund,0) ELSE 0 END AS repeat_order_tax_refunds,
+
+        -- Net Orders
+        0 AS net_orders,
+        0 AS first_net_orders,
+        0 AS repeat_net_orders
 
     FROM {{ ref('shopify_daily_refunds') }}
     WHERE cancelled_at IS NULL
@@ -216,6 +226,37 @@ SELECT
         + SUM(repeat_order_tax_sales)
         - SUM(repeat_order_tax_refunds)
     ) AS repeat_order_total_net_sales
+
+    -- Total Sales
+    (
+        SUM(gross_revenue)
+        - SUM(subtotal_discount)
+        + SUM(shipping_revenue)
+        - SUM(shipping_discounts)
+        + SUM(tax_sales)
+    ) AS total_sales,
+
+    (
+        SUM(first_order_gross_revenue)
+        - SUM(first_order_subtotal_discount)
+        + SUM(first_order_shipping_revenue)
+        - SUM(first_order_shipping_discounts)
+        + SUM(first_order_tax_sales)
+    ) AS first_order_total_sales,
+
+    (
+        SUM(repeat_order_gross_revenue)
+        - SUM(repeat_order_subtotal_discount)
+        + SUM(repeat_order_shipping_revenue)
+        - SUM(repeat_order_shipping_discounts)
+        + SUM(repeat_order_tax_sales)
+    ) AS repeat_order_total_sales,
+
+    -- Net Orders
+    SUM(net_orders) AS net_orders,
+    SUM(net_first_orders) AS net_first_orders,
+    SUM(net_repeat_orders) AS net_repeat_orders
+    
 
 FROM sales_and_refunds_data
 GROUP BY 1,2
