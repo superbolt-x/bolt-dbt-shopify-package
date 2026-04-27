@@ -225,7 +225,7 @@ SELECT
         - SUM(repeat_order_shipping_refunds)
         + SUM(repeat_order_tax_sales)
         - SUM(repeat_order_tax_refunds)
-    ) AS repeat_order_total_net_sales
+    ) AS repeat_order_total_net_sales,
 
     -- Total Sales
     (
