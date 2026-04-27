@@ -6,6 +6,8 @@
 
 
 {%- set sales_channel_exclusion_list = "'"~var("sales_channel_exclusion").split('|')|join("','")~"'" -%}
+{%- set sales_channel_inclusion_list = "'"~var("sales_channel_inclusion").split('|')|join("','")~"'" -%}
+{%- set shipping_country_exclusion_list = "'"~var("shipping_countries_excluded").split('|')|join("','")~"'" -%}
 {%- set shipping_country_inclusion_list = "'"~var("shipping_countries_included").split('|')|join("','")~"'" -%}
 
 WITH giftcard_deduction AS 
@@ -44,11 +46,19 @@ WITH giftcard_deduction AS
     LEFT JOIN giftcard_deduction USING(order_id)
     WHERE giftcard_only = 'false'
     --AND cancelled_at IS NULL
-    AND source_name NOT IN ({{ sales_channel_exclusion_list }})
     AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
     AND (email !~* '{{ var("email_address_exclusion")}}' OR email IS NULL)
+    {%- if var('shipping_countries_excluded') != 'dummy' %}
+    AND (shipping_address_country_code NOT IN ({{ shipping_country_exclusion_list }}) OR shipping_address_country_code IS NULL)
+    {%- endif %}
     {%- if var('shipping_countries_included') != 'dummy' %}
     AND shipping_address_country_code IN ({{ shipping_country_inclusion_list }})
+    {%- endif %}
+    {%- if var('sales_channel_exclusion') != 'dummy' %}
+    AND (source_name NOT IN ({{ sales_channel_exclusion_list }}) OR source_name IS NULL)
+    {%- endif %}
+    {%- if var('sales_channel_inclusion') != 'dummy' %}
+    AND source_name IN ({{ sales_channel_inclusion_list }})
     {%- endif %}
     )
 
