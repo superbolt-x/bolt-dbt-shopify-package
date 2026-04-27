@@ -65,26 +65,11 @@ refunds AS (
 
         SUM(total_tax_refund)
         + SUM(tax_amount_discrepancy_refund)
-        + SUM(tax_amount_shipping_refund) AS tax_refund,
-
-        shipping_address_country_code,
-        source_name,
-        order_tags,
-        email
+        + SUM(tax_amount_shipping_refund) AS tax_refund
     FROM {{ ref('shopify_refunds') }}
     LEFT JOIN giftcard_deduction USING(order_id)
 
-    {# -------- SHIPPING COUNTRY FILTER -------- #}
-    {% if shipping_country_inclusion_list %}
-        WHERE shipping_address_country_code IN ({{ shipping_country_inclusion_list }})
-    {% elif shipping_country_exclusion_list %}
-        WHERE shipping_address_country_code NOT IN ({{ shipping_country_exclusion_list }})
-    {% else %}
-        WHERE 1=1
-    {% endif %}
-
-    GROUP BY refund_date::date, refund_id, order_id,
-             shipping_address_country_code, source_name, order_tags, email
+    GROUP BY refund_date::date, refund_id, order_id
 ),
 
 order_customer AS (
@@ -93,9 +78,10 @@ order_customer AS (
         customer_id,
         cancelled_at,
         customer_order_index,
-        source_name,
         order_tags,
-        email
+        email,
+        source_name,
+        shipping_address_country_code
     FROM {{ ref('shopify_orders') }}
 
     {# -------- SALES CHANNEL -------- #}
@@ -120,9 +106,16 @@ order_customer AS (
     {% if email_address_exclusion | trim %}
         AND (email !~* '{{ email_address_exclusion }}' OR email IS NULL)
     {% endif %}
+
+    {# -------- SHIPPING COUNTRY FILTER -------- #}
+    {% if shipping_country_inclusion_list %}
+        AND shipping_address_country_code IN ({{ shipping_country_inclusion_list }})
+    {% elif shipping_country_exclusion_list %}
+        AND shipping_address_country_code NOT IN ({{ shipping_country_exclusion_list }})
+    {% endif %}
 )
 
 SELECT *,
     {{ get_date_parts('date') }}
-FROM refunds
-LEFT JOIN order_customer USING(order_id)
+FROM order_customer
+LEFT JOIN refunds USING(order_id)
