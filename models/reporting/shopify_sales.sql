@@ -254,8 +254,8 @@ SELECT
 
     -- Net Orders
     SUM(net_orders) AS net_orders,
-    SUM(net_first_orders) AS net_first_orders,
-    SUM(net_repeat_orders) AS net_repeat_orders
+    SUM(first_net_orders) AS first_net_orders,
+    SUM(repeat_net_orders) AS repeat_net_orders
     
 
 FROM sales_and_refunds_data
