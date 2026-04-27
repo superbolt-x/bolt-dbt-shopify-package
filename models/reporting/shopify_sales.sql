@@ -66,14 +66,14 @@ WITH sales_and_refunds_data AS (
         CASE WHEN COALESCE(gross_revenue,0) > 0 AND customer_order_index > 1 THEN 1 ELSE 0 END AS repeat_net_orders,
 
         -- Customers
-        COUNT(DISTINCT customer_id) AS customers,
-        COUNT(DISTINCT CASE WHEN customer_order_index = 1 THEN customer_id END) AS new_customers,
-        COUNT(DISTINCT CASE WHEN customer_order_index > 1 THEN customer_id END) AS repeat_customers,
+        customer_id AS customers,
+        CASE WHEN customer_order_index = 1 THEN customer_id END AS new_customers,
+        CASE WHEN customer_order_index > 1 THEN customer_id END AS repeat_customers,
 
         -- Net Customers
-        COUNT(DISTINCT CASE WHEN COALESCE(gross_revenue,0) > 0 THEN customer_id END) AS net_customers,
-        COUNT(DISTINCT CASE WHEN customer_order_index = 1 AND COALESCE(gross_revenue,0) > 0 THEN customer_id END) AS new_net_customers,
-        COUNT(DISTINCT CASE WHEN customer_order_index > 1 AND COALESCE(gross_revenue,0) > 0 THEN customer_id END) AS repeat_net_customers
+        CASE WHEN COALESCE(gross_revenue,0) > 0 THEN customer_id END AS net_customers,
+        CASE WHEN customer_order_index = 1 AND COALESCE(gross_revenue,0) > 0 THEN customer_id END AS new_net_customers,
+        CASE WHEN customer_order_index > 1 AND COALESCE(gross_revenue,0) > 0 THEN customer_id END AS repeat_net_customers
         
 
     FROM {{ ref('shopify_daily_sales_by_order') }}
@@ -142,14 +142,14 @@ WITH sales_and_refunds_data AS (
         0 AS repeat_net_orders,
 
         -- Customers
-        0 AS customers,
-        0 AS new_customers,
-        0 AS repeat_customers,
+        NULL AS customers,
+        NULL AS new_customers,
+        NULL AS repeat_customers,
 
         -- Net Customers
-        0 AS net_customers,
-        0 AS new_net_customers,
-        0 AS repeat_net_customers
+        NULL AS net_customers,
+        NULL AS new_net_customers,
+        NULL AS repeat_net_customers
 
     FROM {{ ref('shopify_daily_refunds') }}
     WHERE cancelled_at IS NULL
@@ -279,14 +279,14 @@ SELECT
     SUM(repeat_net_orders) AS repeat_net_orders,
 
     -- Customers
-    SUM(customers) AS customers,
-    SUM(new_customers) AS new_customers,
-    SUM(repeat_customers) AS repeat_customers,
+    COUNT(DISTINCT(customers)) AS customers,
+    COUNT(DISTINCT(new_customers)) AS new_customers,
+    COUNT(DISTINCT(repeat_customers)) AS repeat_customers,
 
     -- Net Customers
-    SUM(net_customers) AS net_customers,
-    SUM(new_net_customers) AS new_net_customers,
-    SUM(repeat_net_customers) AS repeat_net_customers
+    COUNT(DISTINCT(net_customers)) AS net_customers,
+    COUNT(DISTINCT(new_net_customers)) AS new_net_customers,
+    COUNT(DISTINCT(repeat_net_customers)) AS repeat_net_customers
     
 
 FROM sales_and_refunds_data
