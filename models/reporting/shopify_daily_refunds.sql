@@ -88,7 +88,7 @@ order_customer AS (
     {% if sales_channel_inclusion_list %}
         WHERE source_name IN ({{ sales_channel_inclusion_list }})
     {% elif sales_channel_exclusion_list %}
-        WHERE source_name NOT IN ({{ sales_channel_exclusion_list }})
+        WHERE (source_name NOT IN ({{ sales_channel_exclusion_list }}) OR source_name IS NULL)
     {% else %}
         WHERE 1=1
     {% endif %}
@@ -111,7 +111,7 @@ order_customer AS (
     {% if shipping_country_inclusion_list %}
         AND shipping_address_country_code IN ({{ shipping_country_inclusion_list }})
     {% elif shipping_country_exclusion_list %}
-        AND shipping_address_country_code NOT IN ({{ shipping_country_exclusion_list }})
+        AND (shipping_address_country_code NOT IN ({{ shipping_country_exclusion_list }}) OR shipping_address_country_code IS NULL)
     {% endif %}
 )
 
