@@ -4,27 +4,54 @@
     unique_key='unique_key'
 )}}
 
+{# -------------------- VARS (SAFE DEFAULTS) -------------------- #}
+{%- set sales_channel_exclusion = var("sales_channel_exclusion", "") -%}
+{%- set sales_channel_inclusion = var("sales_channel_inclusion", "") -%}
+{%- set shipping_countries_excluded = var("shipping_countries_excluded", "") -%}
+{%- set shipping_countries_included = var("shipping_countries_included", "") -%}
+{%- set order_tags_keyword_exclusion = var("order_tags_keyword_exclusion", "") -%}
+{%- set order_tags_keyword_inclusion = var("order_tags_keyword_inclusion", "") -%}
+{%- set email_address_exclusion = var("email_address_exclusion", "") -%}
 
-{%- set sales_channel_exclusion_list = "'"~var("sales_channel_exclusion").split('|')|join("','")~"'" -%}
-{%- set shipping_country_inclusion_list = "'"~var("shipping_countries_included").split('|')|join("','")~"'" -%}
+{# -------------------- LIST BUILDING -------------------- #}
+{%- set sales_channel_exclusion_list =
+    "'" ~ sales_channel_exclusion.split('|') | reject('equalto','') | join("','") ~ "'"
+    if sales_channel_exclusion else none
+-%}
 
-WITH giftcard_deduction AS 
-    (SELECT 
+{%- set sales_channel_inclusion_list =
+    "'" ~ sales_channel_inclusion.split('|') | reject('equalto','') | join("','") ~ "'"
+    if sales_channel_inclusion else none
+-%}
+
+{%- set shipping_country_exclusion_list =
+    "'" ~ shipping_countries_excluded.split('|') | reject('equalto','') | join("','") ~ "'"
+    if shipping_countries_excluded else none
+-%}
+    
+{%- set shipping_country_inclusion_list =
+    "'" ~ shipping_countries_included.split('|') | reject('equalto','') | join("','") ~ "'"
+    if shipping_countries_included else none
+-%}
+
+WITH giftcard_deduction AS (
+    SELECT 
         order_id, 
         CASE WHEN items_count = giftcard_count THEN 'true' ELSE 'false' END as giftcard_only,
         giftcard_deduction
-    FROM 
-        (SELECT 
+    FROM (
+        SELECT 
             order_id, 
             SUM(quantity) as items_count,
             COALESCE(SUM(CASE WHEN gift_card is true THEN quantity END),0) as giftcard_count,
             COALESCE(SUM(CASE WHEN gift_card is true THEN price * quantity END),0) as giftcard_deduction
         FROM {{ ref('shopify_line_items') }}
-        GROUP BY 1)
-    ),
+        GROUP BY 1
+    )
+),
 
-    orders AS 
-    (SELECT 
+orders AS (
+    SELECT 
         order_date as date,
         cancelled_at::date as cancelled_at,
         customer_first_order_date as customer_acquisition_date,
@@ -32,8 +59,8 @@ WITH giftcard_deduction AS
         customer_id, 
         customer_order_index,
         gross_revenue - COALESCE(giftcard_deduction,0) as gross_revenue,
-        total_discounts-gross_revenue+subtotal_revenue as shipping_discount,
-        gross_revenue-subtotal_revenue as subtotal_discount,
+        total_discounts - gross_revenue + subtotal_revenue as shipping_discount,
+        gross_revenue - subtotal_revenue as subtotal_discount,
         discount_rate,
         subtotal_revenue,
         total_tax, 
@@ -43,16 +70,37 @@ WITH giftcard_deduction AS
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)
     WHERE giftcard_only = 'false'
-    --AND cancelled_at IS NULL
+
+    {% if sales_channel_exclusion_list %}
     AND source_name NOT IN ({{ sales_channel_exclusion_list }})
-    AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
-    AND (email !~* '{{ var("email_address_exclusion")}}' OR email IS NULL)
-    {%- if var('shipping_countries_included') != 'dummy' %}
+    {% endif %}
+
+    {% if sales_channel_inclusion_list %}
+    AND source_name IN ({{ sales_channel_inclusion_list }})
+    {% endif %}
+
+    {% if order_tags_keyword_exclusion %}
+    AND (order_tags !~* '{{ order_tags_keyword_exclusion }}' OR order_tags IS NULL)
+    {% endif %}
+
+    {% if order_tags_keyword_inclusion %}
+    AND (order_tags ~* '{{ order_tags_keyword_inclusion }}')
+    {% endif %}
+
+    {% if email_address_exclusion %}
+    AND (email !~* '{{ email_address_exclusion }}' OR email IS NULL)
+    {% endif %}
+
+    {% if shipping_country_exclusion_list %}
+    AND shipping_address_country_code IN ({{ shipping_country_exclusion_list }})
+    {% endif %}
+
+    {% if shipping_country_inclusion_list %}
     AND shipping_address_country_code IN ({{ shipping_country_inclusion_list }})
-    {%- endif %}
-    )
+    {% endif %}
+)
 
 SELECT *,
     {{ get_date_parts('date') }},
-    date||'_'||order_id as unique_key
-FROM orders 
+    date || '_' || order_id as unique_key
+FROM orders
