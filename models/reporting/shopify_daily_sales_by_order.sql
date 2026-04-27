@@ -14,24 +14,40 @@
 {%- set email_address_exclusion = var("email_address_exclusion", "") -%}
 
 {# -------------------- LISTS -------------------- #}
+{%- set sales_channel_exclusion_values =
+    sales_channel_exclusion.split('|') | reject('equalto','') | list
+-%}
+
 {%- set sales_channel_exclusion_list =
-    "'" ~ sales_channel_exclusion.split('|') | reject('equalto','') | join("','") ~ "'"
-    if sales_channel_exclusion | trim else none
+    "'" ~ sales_channel_exclusion_values | join("','") ~ "'"
+    if sales_channel_exclusion_values | length > 0 else none
+-%}
+
+{%- set sales_channel_inclusion_values =
+    sales_channel_inclusion.split('|') | reject('equalto','') | list
 -%}
 
 {%- set sales_channel_inclusion_list =
-    "'" ~ sales_channel_inclusion.split('|') | reject('equalto','') | join("','") ~ "'"
-    if sales_channel_inclusion | trim else none
+    "'" ~ sales_channel_inclusion_values | join("','") ~ "'"
+    if sales_channel_inclusion_values | length > 0 else none
+-%}
+
+{%- set shipping_country_exclusion_values =
+    shipping_country_exclusion.split('|') | reject('equalto','') | list
 -%}
 
 {%- set shipping_country_exclusion_list =
-    "'" ~ shipping_countries_excluded.split('|') | reject('equalto','') | join("','") ~ "'"
-    if shipping_countries_excluded | trim else none
+    "'" ~ shipping_country_exclusion_values | join("','") ~ "'"
+    if shipping_country_exclusion_values | length > 0 else none
+-%}
+
+{%- set shipping_country_inclusion_values =
+    shipping_country_inclusion.split('|') | reject('equalto','') | list
 -%}
 
 {%- set shipping_country_inclusion_list =
-    "'" ~ shipping_countries_included.split('|') | reject('equalto','') | join("','") ~ "'"
-    if shipping_countries_included | trim else none
+    "'" ~ shipping_country_inclusion_values | join("','") ~ "'"
+    if shipping_country_inclusion_values | length > 0 else none
 -%}
 
 WITH giftcard_deduction AS (
