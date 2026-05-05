@@ -77,8 +77,10 @@ WITH sales_and_refunds_data AS (
         
 
     FROM {{ ref('shopify_daily_sales_by_order') }}
-    WHERE cancelled_at IS NULL
-      AND customer_id IS NOT NULL
+    WHERE customer_id IS NOT NULL
+    {%- if var('canceled_orders') != 'included' %}
+    AND cancelled_at IS NOT NULL
+    {%- endif %}
 
     UNION ALL
 
@@ -152,7 +154,10 @@ WITH sales_and_refunds_data AS (
         NULL AS repeat_net_customers
 
     FROM {{ ref('shopify_daily_refunds') }}
-    WHERE cancelled_at IS NULL
+    
+    {%- if var('canceled_orders') != 'included' %}
+    WHERE cancelled_at IS NOT NULL
+    {%- endif %}
 
 ),
 
