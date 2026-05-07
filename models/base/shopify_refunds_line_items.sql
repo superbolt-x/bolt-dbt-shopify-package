@@ -29,18 +29,18 @@ order_line_refund_raw_data AS
         refund AS 
     (SELECT 
         order_line_id,
-        s.date,
+        refund_date,
         SUM(quantity) as refund_quantity,
         SUM(subtotal) as refund_subtotal
     FROM refund_raw r
         left join {{ ref('shopify_refunds') }} s
         on r.refund_id = s.refund_id
-    GROUP BY order_line_id, s.date
+    GROUP BY order_line_id, refund_date
     )
 
 SELECT 
         order_line_id,
-        date,
+        refund_date as date,
         refund_quantity,
         refund_subtotal
 FROM refund 
