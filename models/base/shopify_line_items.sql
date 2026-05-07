@@ -43,6 +43,11 @@ WITH order_line_raw_data AS
     orders_raw AS 
     (SELECT 
         order_date,
+        day,
+        week,
+        month,
+        quarter,
+        year,
         {% for column in item_selected_fields -%}
         {{ get_shopify_clean_field(item_table_name, column)}}
         {%- if not loop.last %},{% endif %}
@@ -70,7 +75,12 @@ discount_raw_data AS
 SELECT 
         order_line_id,
         id,
-        order_date as date,
+        order_date,
+        day,
+        week,
+        month,
+        quarter,
+        year,
         product_id,
         variant_id,
         title,
