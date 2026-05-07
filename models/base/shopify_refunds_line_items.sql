@@ -30,6 +30,11 @@ order_line_refund_raw_data AS
     (SELECT 
         order_line_id,
         refund_date,
+        day,
+        week,
+        month,
+        quarter,
+        year,
         SUM(quantity) as refund_quantity,
         SUM(subtotal) as refund_subtotal
     FROM refund_raw r
@@ -40,7 +45,12 @@ order_line_refund_raw_data AS
 
 SELECT 
         order_line_id,
-        refund_date as date,
+        refund_date,
+        day,
+        week,
+        month,
+        quarter,
+        year,
         refund_quantity,
         refund_subtotal
 FROM refund 
