@@ -25,12 +25,6 @@
 "amount"
 ] -%}
 
-{%- set item_refund_selected_fields = [
-"order_line_id",
-"refund_id",
-"quantity",
-"subtotal"
-] -%}
 
 {%- set order_line_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line') -%}
 {%- set discount_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'discount_allocation') -%}
