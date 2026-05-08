@@ -89,7 +89,7 @@ SELECT
         fulfillment_status,
         gift_card,
         index,
-        amount as discount_amount,
+        amount as discount_amount
         
 FROM orders 
 left join discount using (order_line_id)
