@@ -91,5 +91,5 @@ SELECT
         index,
         amount as discount_amount,
         
-FROM items 
+FROM orders 
 left join discount using (order_line_id)
