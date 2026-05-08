@@ -3,6 +3,8 @@
         item_discount_table_name,
         item_fund_table_name
         = 'shopify_raw', 'order_line', 'discount_allocation', 'order_line_refund' -%}
+
+        
 {%- set item_selected_fields = [
     "order_id",
     "id",
