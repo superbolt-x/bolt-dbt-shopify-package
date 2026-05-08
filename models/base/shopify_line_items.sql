@@ -40,7 +40,7 @@
 WITH order_line_raw_data AS 
     ({{ dbt_utils.union_relations(relations = order_line_raw_tables) }}),
         
-    orders_raw AS 
+    orders AS 
     (SELECT 
         order_date,
         day,
@@ -97,5 +97,3 @@ SELECT
         
 FROM items 
 left join discount using (order_line_id)
-left join refund using (order_line_id)
-
