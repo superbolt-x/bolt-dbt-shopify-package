@@ -1,7 +1,8 @@
 {{ config (
     alias = target.database + '_shopify_daily_sales_by_order',
     materialized='incremental',
-    unique_key='unique_key'
+    unique_key='unique_key',
+    on_schema_change='append_new_columns'
 )}}
 
 
@@ -41,7 +42,25 @@ WITH giftcard_deduction AS
         total_tax, 
         shipping_price, 
         total_revenue,
-        order_tags
+        order_tags,
+        order_name,
+        email,
+        financial_status,
+        fulfillment_status,
+        currency,
+        source_name,
+        referring_site,
+        landing_site_base_url,
+        shipping_address_country,
+        shipping_address_country_code,
+        shipping_address_province,
+        shipping_address_city,
+        shipping_address_zip,
+        discount_code,
+        created_at,
+        processed_at,
+        customer_last_order_date
+
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)
     WHERE giftcard_only = 'false'
