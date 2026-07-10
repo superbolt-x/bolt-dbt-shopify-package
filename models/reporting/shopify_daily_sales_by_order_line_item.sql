@@ -1,60 +1,99 @@
 {{ config (
-    alias = target.database + '_shopify_daily_sales_by_order_line_item',
+    alias = target.database + '_shopify_daily_sales_by_order',
     materialized='incremental',
     unique_key='unique_key',
     on_schema_change='append_new_columns'
 )}}
 
 
-WITH orders AS 
-    (SELECT *
-    FROM {{ ref('shopify_daily_sales_by_order') }}
-    ),
+{%- set sales_channel_exclusion_list = "'"~var("sales_channel_exclusion").split('|')|join("','")~"'" -%}
+{%- set sales_channel_inclusion_list = "'"~var("sales_channel_inclusion").split('|')|join("','")~"'" -%}
+{%- set shipping_country_exclusion_list = "'"~var("shipping_countries_excluded").split('|')|join("','")~"'" -%}
+{%- set shipping_country_inclusion_list = "'"~var("shipping_countries_included").split('|')|join("','")~"'" -%}
 
-    line_items AS 
-    (SELECT *
-    FROM {{ ref('shopify_line_items') }}
-    ),
-
-    products AS
-    (SELECT product_id, product_type, product_tags, product_handle, product_status, count(*)
-    FROM {{ ref('shopify_products') }}
-    GROUP BY 1,2,3,4,5
-    ),
-
-    sales AS 
+WITH giftcard_deduction AS 
     (SELECT 
-        date,
-        cancelled_at,
         order_id, 
-        customer_id,
-        customer_acquisition_date,
+        CASE WHEN items_count = giftcard_count THEN 'true' ELSE 'false' END as giftcard_only,
+        giftcard_deduction
+    FROM 
+        (SELECT 
+            order_id, 
+            SUM(quantity) as items_count,
+            COALESCE(SUM(CASE WHEN gift_card is true THEN quantity END),0) as giftcard_count,
+            COALESCE(SUM(CASE WHEN gift_card is true THEN price * quantity END),0) as giftcard_deduction
+        FROM {{ ref('shopify_line_items') }}
+        GROUP BY 1)
+    ),
+
+    orders AS 
+    (SELECT 
+        order_date as date,
+        cancelled_at::date as cancelled_at,
+        customer_first_order_date as customer_acquisition_date,
+        order_id, 
+        customer_id, 
         customer_order_index,
-        order_tags, 
-        order_line_id,
-        product_id,
-        variant_id,
-        sku,
-        product_title,
-        variant_title,
-        item_title,
-        index,
-        gift_card,
-        price,
-        quantity,
-        line_items.fulfillment_status as item_fulfillment_status,
-        fulfillable_quantity,
-        net_subtotal,
-        price * quantity as gross_sales,
+        gross_revenue - COALESCE(giftcard_deduction,0) as gross_revenue,
+        total_discounts-gross_revenue+subtotal_revenue as shipping_discount,
+        gross_revenue-subtotal_revenue as subtotal_discount,
         discount_rate,
-        (price * quantity) * COALESCE(subtotal_revenue / NULLIF(gross_revenue,0)) as subtotal_sales,
-        (price * quantity) * COALESCE(total_revenue / NULLIF(gross_revenue,0)) as total_sales,
-        quantity - COALESCE(refund_quantity,0) as net_quantity
-    FROM orders 
-    LEFT JOIN line_items USING(order_id)
+        subtotal_revenue,
+        current_subtotal_price,
+        total_tax,
+        shipping_price,
+        total_revenue,
+        order_tags,
+        order_name,
+        email,
+        financial_status,
+        fulfillment_status,
+        currency,
+        source_name,
+        referring_site,
+        landing_site_base_url,
+        shipping_address_country,
+        shipping_address_country_code,
+        shipping_address_province,
+        shipping_address_city,
+        shipping_address_zip,
+        billing_address_first_name,
+        billing_address_last_name,
+        billing_address_phone,
+        billing_address_address_1,
+        billing_address_city,
+        billing_address_country_code,
+        billing_address_province,
+        billing_address_zip,
+        discount_code,
+        created_at,
+        processed_at,
+        customer_last_order_date
+
+    FROM {{ ref('shopify_orders') }}
+    LEFT JOIN giftcard_deduction USING(order_id)
+    WHERE giftcard_only = 'false'
+    --AND cancelled_at IS NULL
+    AND (order_tags !~* '{{ var("order_tags_keyword_exclusion")}}' OR order_tags IS NULL)
+    AND (email !~* '{{ var("email_address_exclusion")}}' OR email IS NULL)
+    {%- if var('financial_status') != 'dummy' %}
+    AND financial_status ~* '{{ var("financial_status")}}'
+    {%- endif %}
+    {%- if var('shipping_countries_excluded') != 'dummy' %}
+    AND (shipping_address_country_code NOT IN ({{ shipping_country_exclusion_list }}) OR shipping_address_country_code IS NULL)
+    {%- endif %}
+    {%- if var('shipping_countries_included') != 'dummy' %}
+    AND shipping_address_country_code IN ({{ shipping_country_inclusion_list }})
+    {%- endif %}
+    {%- if var('sales_channel_exclusion') != 'dummy' %}
+    AND (source_name NOT IN ({{ sales_channel_exclusion_list }}) OR source_name IS NULL)
+    {%- endif %}
+    {%- if var('sales_channel_inclusion') != 'dummy' %}
+    AND source_name IN ({{ sales_channel_inclusion_list }})
+    {%- endif %}
     )
 
 SELECT *,
-    date||'_'||order_line_id as unique_key
-FROM sales
-LEFT JOIN (SELECT product_id, product_type, product_tags, product_handle, product_status FROM products) USING(product_id)
+    {{ get_date_parts('date') }},
+    date||'_'||order_id as unique_key
+FROM orders 
