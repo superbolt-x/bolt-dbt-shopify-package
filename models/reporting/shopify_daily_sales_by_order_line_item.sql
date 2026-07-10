@@ -17,7 +17,7 @@ WITH orders AS
     ),
 
     products AS
-    (SELECT product_id, product_type, vendor, product_tags, product_handle, product_status, count(*)
+    (SELECT product_id, product_type, product_vendor as vendor, product_tags, product_handle, product_status, count(*)
     FROM {{ ref('shopify_products') }}
     GROUP BY 1,2,3,4,5,6
     ),
@@ -57,4 +57,4 @@ WITH orders AS
 SELECT *,
     date||'_'||order_line_id as unique_key
 FROM sales
-LEFT JOIN (SELECT product_id, product_type, vendor, product_tags, product_handle, product_status FROM products) USING(product_id)
+LEFT JOIN (SELECT product_id, product_type, vendor, product_tags, product_handle, product_status FROM products) USING(product_id) -- vendor ya viene aliaseado desde products
