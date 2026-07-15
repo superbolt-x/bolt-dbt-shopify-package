@@ -49,9 +49,7 @@ WITH orders AS
         discount_rate,
         (price * quantity) * COALESCE(subtotal_revenue / NULLIF(gross_revenue,0)) as subtotal_sales,
         (price * quantity) * COALESCE(total_revenue / NULLIF(gross_revenue,0)) as total_sales,
-        quantity - COALESCE(refund_quantity,0) as net_quantity,
-        subtotal_price,
-        total_price
+        quantity - COALESCE(refund_quantity,0) as net_quantity
     FROM orders 
     LEFT JOIN line_items USING(order_id)
     )
