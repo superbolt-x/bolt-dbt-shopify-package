@@ -70,7 +70,7 @@ WITH giftcard_deduction AS
         processed_at,
         customer_last_order_date,
         subtotal_price,
-        total_price,
+        total_price
 
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)
