@@ -68,9 +68,7 @@ WITH giftcard_deduction AS
         discount_code,
         created_at,
         processed_at,
-        customer_last_order_date,
-        subtotal_price,
-        total_price
+        customer_last_order_date
 
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)
