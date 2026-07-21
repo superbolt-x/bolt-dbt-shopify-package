@@ -51,6 +51,9 @@ WITH
     {%- if var('financial_status') != 'dummy' %}
     AND financial_status ~* '{{ var("financial_status")}}'
     {%- endif %}
+    {%- if var('order_test') != 'dummy' %}
+    AND "test" !~* '{{ var("order_test")}}'
+    {%- endif %}
     {%- if var('shipping_countries_excluded') != 'dummy' %}
     AND (shipping_address_country_code NOT IN ({{ shipping_country_exclusion_list }}) OR shipping_address_country_code IS NULL)
     {%- endif %}
