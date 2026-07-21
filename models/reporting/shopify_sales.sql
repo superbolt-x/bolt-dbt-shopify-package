@@ -156,7 +156,7 @@ WITH sales_and_refunds_data AS (
     FROM {{ ref('shopify_daily_refunds') }}
     
     {%- if var('canceled_orders') != 'included' %}
-    WHERE cancelled_at IS NOT NULL
+    WHERE cancelled_at IS NULL
     {%- endif %}
 
 ),
