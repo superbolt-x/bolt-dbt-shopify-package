@@ -64,7 +64,8 @@
     "billing_address_country_code",
     "billing_address_province",
     "billing_address_province_code",
-    "billing_address_zip"
+    "billing_address_zip",
+    "test"
 ] -%}
 
 {%- set discount_selected_fields = [
