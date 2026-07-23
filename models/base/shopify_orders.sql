@@ -106,14 +106,6 @@
     "status"
 ] -%}
 
-{#- customer_visit is only synced for some clients. Only wire it in when the raw table exists. -#}
-{%- set customer_visit_selected_fields = [
-    "order_id",
-    "occurred_at",
-    "source",
-    "utm_parameters_source"
-] -%}
-
 {%- set order_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order') -%}
 {%- set discount_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_discount_code') -%}
 {%- set shipping_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_shipping_line') -%}
@@ -123,8 +115,6 @@
 {%- set line_refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line_refund') -%}
 {%- set fulfillment_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment') -%}
 {%- set has_fulfillment = fulfillment_raw_tables | length > 0 -%}
-{%- set customer_visit_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'customer_visit') -%}
-{%- set has_customer_visit = customer_visit_raw_tables | length > 0 -%}
 
 WITH
     -- To tackle the signal loss between Fivetran and Shopify transformations
@@ -298,33 +288,6 @@ WITH
     )
     {%- endif %}
 
-    {%- if has_customer_visit %}
-    ,customer_visit_raw_data AS
-    ({{ dbt_utils.union_relations(relations = customer_visit_raw_tables) }}),
-
-    customer_visit_staging AS
-    (SELECT
-        {% for field in customer_visit_selected_fields -%}
-        {{ get_shopify_clean_field('customer_visit', field) }}
-        {%- if not loop.last %},{% endif %}
-        {% endfor %}
-    FROM customer_visit_raw_data
-    ),
-
-    -- last visit before the order = the visit most likely to have driven the purchase
-    customer_visit AS
-    (SELECT order_id, visit_source
-    FROM (
-        SELECT order_id,
-            COALESCE(utm_parameters_source, source) as visit_source,
-            ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY occurred_at DESC) as rn
-        FROM customer_visit_staging
-        WHERE order_id IS NOT NULL
-    )
-    WHERE rn = 1
-    )
-    {%- endif %}
-
 SELECT *,
     processed_at::date as order_date,
     {{ get_date_parts('order_date') }},
@@ -341,7 +304,4 @@ LEFT JOIN tags USING(order_id)
 LEFT JOIN refund USING(order_id)
 {%- if has_fulfillment %}
 LEFT JOIN fulfillment USING(order_id)
-{%- endif %}
-{%- if has_customer_visit %}
-LEFT JOIN customer_visit USING(order_id)
 {%- endif %}
