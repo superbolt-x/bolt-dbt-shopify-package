@@ -6,6 +6,9 @@
 )}}
 
 
+{#- fulfillment_date only exists downstream when the raw fulfillment table is synced (some clients only) -#}
+{%- set has_fulfillment = dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment') | length > 0 -%}
+
 {%- set sales_channel_exclusion_list = "'"~var("sales_channel_exclusion").split('|')|join("','")~"'" -%}
 {%- set sales_channel_inclusion_list = "'"~var("sales_channel_inclusion").split('|')|join("','")~"'" -%}
 {%- set shipping_country_exclusion_list = "'"~var("shipping_countries_excluded").split('|')|join("','")~"'" -%}
@@ -69,6 +72,9 @@ WITH giftcard_deduction AS
         created_at,
         processed_at,
         customer_last_order_date
+        {%- if has_fulfillment %},
+        fulfillment_date
+        {%- endif %}
 
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)

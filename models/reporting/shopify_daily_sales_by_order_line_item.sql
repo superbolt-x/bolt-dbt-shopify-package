@@ -5,6 +5,9 @@
     on_schema_change='append_new_columns'
 )}}
 
+{#- line-grain fulfillment_date only exists when both fulfillment raw tables are synced (some clients only) -#}
+{%- set has_fulfillment = (dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment_order_line') | length > 0) and (dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment') | length > 0) -%}
+
 
 WITH orders AS 
     (SELECT *
@@ -43,6 +46,9 @@ WITH orders AS
         price,
         quantity,
         line_items.fulfillment_status as item_fulfillment_status,
+        {%- if has_fulfillment %}
+        line_items.fulfillment_date as fulfillment_date,
+        {%- endif %}
         fulfillable_quantity,
         net_subtotal,
         price * quantity as gross_sales,
