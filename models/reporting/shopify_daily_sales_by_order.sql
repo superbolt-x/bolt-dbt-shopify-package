@@ -8,8 +8,6 @@
 
 {#- fulfillment_date only exists downstream when the raw fulfillment table is synced (some clients only) -#}
 {%- set has_fulfillment = dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment') | length > 0 -%}
-{#- visit_source only exists downstream when the raw customer_visit table is synced (some clients only) -#}
-{%- set has_customer_visit = dbt_utils.get_relations_by_pattern('shopify_raw%', 'customer_visit') | length > 0 -%}
 
 {%- set sales_channel_exclusion_list = "'"~var("sales_channel_exclusion").split('|')|join("','")~"'" -%}
 {%- set sales_channel_inclusion_list = "'"~var("sales_channel_inclusion").split('|')|join("','")~"'" -%}
@@ -76,9 +74,6 @@ WITH giftcard_deduction AS
         customer_last_order_date
         {%- if has_fulfillment %},
         fulfillment_date
-        {%- endif %}
-        {%- if has_customer_visit %},
-        visit_source
         {%- endif %}
 
     FROM {{ ref('shopify_orders') }}
