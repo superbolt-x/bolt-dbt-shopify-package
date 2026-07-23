@@ -8,20 +8,22 @@
 
 {#- fulfillment_date only exists downstream when the raw fulfillment table is synced (some clients only) -#}
 {%- set has_fulfillment = dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment') | length > 0 -%}
+{#- visit_source only exists downstream when the raw customer_visit table is synced (some clients only) -#}
+{%- set has_customer_visit = dbt_utils.get_relations_by_pattern('shopify_raw%', 'customer_visit') | length > 0 -%}
 
 {%- set sales_channel_exclusion_list = "'"~var("sales_channel_exclusion").split('|')|join("','")~"'" -%}
 {%- set sales_channel_inclusion_list = "'"~var("sales_channel_inclusion").split('|')|join("','")~"'" -%}
 {%- set shipping_country_exclusion_list = "'"~var("shipping_countries_excluded").split('|')|join("','")~"'" -%}
 {%- set shipping_country_inclusion_list = "'"~var("shipping_countries_included").split('|')|join("','")~"'" -%}
 
-WITH giftcard_deduction AS 
-    (SELECT 
-        order_id, 
+WITH giftcard_deduction AS
+    (SELECT
+        order_id,
         CASE WHEN items_count = giftcard_count THEN 'true' ELSE 'false' END as giftcard_only,
         giftcard_deduction
-    FROM 
-        (SELECT 
-            order_id, 
+    FROM
+        (SELECT
+            order_id,
             SUM(quantity) as items_count,
             COALESCE(SUM(CASE WHEN gift_card is true THEN quantity END),0) as giftcard_count,
             COALESCE(SUM(CASE WHEN gift_card is true THEN price * quantity END),0) as giftcard_deduction
@@ -29,13 +31,13 @@ WITH giftcard_deduction AS
         GROUP BY 1)
     ),
 
-    orders AS 
-    (SELECT 
+    orders AS
+    (SELECT
         order_date as date,
         cancelled_at::date as cancelled_at,
         customer_first_order_date as customer_acquisition_date,
-        order_id, 
-        customer_id, 
+        order_id,
+        customer_id,
         customer_order_index,
         gross_revenue - COALESCE(giftcard_deduction,0) as gross_revenue,
         total_discounts-gross_revenue+subtotal_revenue as shipping_discount,
@@ -75,6 +77,9 @@ WITH giftcard_deduction AS
         {%- if has_fulfillment %},
         fulfillment_date
         {%- endif %}
+        {%- if has_customer_visit %},
+        visit_source
+        {%- endif %}
 
     FROM {{ ref('shopify_orders') }}
     LEFT JOIN giftcard_deduction USING(order_id)
@@ -105,4 +110,4 @@ WITH giftcard_deduction AS
 SELECT *,
     {{ get_date_parts('date') }},
     date||'_'||order_id as unique_key
-FROM orders 
+FROM orders
