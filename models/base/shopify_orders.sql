@@ -99,6 +99,13 @@
     "total_tax"
 ] -%}
 
+{#- Fulfillment is only synced for some clients. Only wire it in when the raw table exists. -#}
+{%- set fulfillment_selected_fields = [
+    "order_id",
+    "created_at",
+    "status"
+] -%}
+
 {%- set order_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order') -%}
 {%- set discount_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_discount_code') -%}
 {%- set shipping_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_shipping_line') -%}
@@ -106,6 +113,8 @@
 {%- set refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'refund') -%}
 {%- set adjustment_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_adjustment') -%}
 {%- set line_refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line_refund') -%}
+{%- set fulfillment_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment') -%}
+{%- set has_fulfillment = fulfillment_raw_tables | length > 0 -%}
 
 WITH 
     -- To tackle the signal loss between Fivetran and Shopify transformations
@@ -257,6 +266,28 @@ WITH
     GROUP BY order_id
     )
 
+    {%- if has_fulfillment %}
+    ,fulfillment_raw_data AS
+    ({{ dbt_utils.union_relations(relations = fulfillment_raw_tables) }}),
+
+    fulfillment_staging AS
+    (SELECT
+        {% for field in fulfillment_selected_fields -%}
+        {{ get_shopify_clean_field('fulfillment', field) }}
+        {%- if not loop.last %},{% endif %}
+        {% endfor %}
+    FROM fulfillment_raw_data
+    ),
+
+    -- order-grain fulfillment date = first successful fulfillment (orders can have several)
+    fulfillment AS
+    (SELECT order_id,
+        MIN(CASE WHEN status = 'success' THEN created_at END)::date as fulfillment_date
+    FROM fulfillment_staging
+    GROUP BY order_id
+    )
+    {%- endif %}
+
 SELECT *,
     processed_at::date as order_date, 
     {{ get_date_parts('order_date') }},
@@ -266,8 +297,11 @@ SELECT *,
     MAX(CASE WHEN cancelled_at IS NULL THEN order_date END) OVER (PARTITION BY customer_id) as customer_last_order_date, 
     CASE WHEN cancelled_at IS NULL THEN ROW_NUMBER() OVER (PARTITION BY customer_id, cancelled_at IS NULL ORDER BY order_date) END as customer_order_index,
     order_id as unique_key
-FROM orders 
+FROM orders
 LEFT JOIN discount USING(order_id)
 LEFT JOIN shipping USING(order_id)
 LEFT JOIN tags USING(order_id)
 LEFT JOIN refund USING(order_id)
+{%- if has_fulfillment %}
+LEFT JOIN fulfillment USING(order_id)
+{%- endif %}
