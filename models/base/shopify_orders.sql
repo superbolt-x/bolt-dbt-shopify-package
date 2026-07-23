@@ -1,20 +1,20 @@
 {%- set schema_name,
-        order_table_name, 
+        order_table_name,
         discount_table_name,
         shipping_table_name,
         tag_table_name,
         refund_table_name,
         adjustment_table_name,
         line_refund_table_name
-        = 'shopify_raw', 
-        'order', 
-        'order_discount_code', 
+        = 'shopify_raw',
+        'order',
+        'order_discount_code',
         'order_shipping_line',
         'order_tag',
         'refund',
         'order_adjustment',
         'order_line_refund' -%}
-        
+
 {%- set order_selected_fields = [
     "id",
     "name",
@@ -106,6 +106,14 @@
     "status"
 ] -%}
 
+{#- customer_visit is only synced for some clients. Only wire it in when the raw table exists. -#}
+{%- set customer_visit_selected_fields = [
+    "order_id",
+    "occurred_at",
+    "source",
+    "utm_parameters_source"
+] -%}
+
 {%- set order_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order') -%}
 {%- set discount_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_discount_code') -%}
 {%- set shipping_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_shipping_line') -%}
@@ -115,20 +123,22 @@
 {%- set line_refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line_refund') -%}
 {%- set fulfillment_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment') -%}
 {%- set has_fulfillment = fulfillment_raw_tables | length > 0 -%}
+{%- set customer_visit_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'customer_visit') -%}
+{%- set has_customer_visit = customer_visit_raw_tables | length > 0 -%}
 
-WITH 
+WITH
     -- To tackle the signal loss between Fivetran and Shopify transformations
-    stellar_signal AS 
+    stellar_signal AS
     (SELECT _fivetran_synced
     FROM {{ source('shopify_raw', 'order') }}
     LIMIT 1
     ),
 
-    order_raw_data AS 
+    order_raw_data AS
     ({{ dbt_utils.union_relations(relations = order_raw_tables) }}),
 
-    orders AS 
-    (SELECT 
+    orders AS
+    (SELECT
 
         {% for field in order_selected_fields -%}
         {{ get_shopify_clean_field(order_table_name, field)}}
@@ -138,12 +148,12 @@ WITH
     FROM order_raw_data
     ),
 
-    discount_raw_data AS 
+    discount_raw_data AS
     ({{ dbt_utils.union_relations(relations = discount_raw_tables) }}),
 
-    discount_staging AS 
-    (SELECT 
-        
+    discount_staging AS
+    (SELECT
+
         {% for field in discount_selected_fields -%}
         {{ get_shopify_clean_field(discount_table_name, field)}}
         {%- if not loop.last %},{% endif %}
@@ -152,19 +162,19 @@ WITH
     FROM discount_raw_data
     ),
 
-    discount AS 
-    (SELECT order_id, 
+    discount AS
+    (SELECT order_id,
         LISTAGG(discount_code, ', ') WITHIN GROUP (ORDER BY discount_code) as discount_code
     FROM discount_staging
     GROUP BY order_id
     ),
 
-    shipping_raw_data AS 
+    shipping_raw_data AS
     ({{ dbt_utils.union_relations(relations = shipping_raw_tables) }}),
 
-    shipping_staging AS 
-    (SELECT 
-        
+    shipping_staging AS
+    (SELECT
+
         {% for field in shipping_selected_fields -%}
         {{ get_shopify_clean_field(shipping_table_name, field)}}
         {%- if not loop.last %},{% endif %}
@@ -173,8 +183,8 @@ WITH
     FROM shipping_raw_data
     ),
 
-    shipping AS 
-    (SELECT order_id, 
+    shipping AS
+    (SELECT order_id,
         LISTAGG(shipping_title, ', ') WITHIN GROUP (ORDER BY shipping_title) as shipping_title,
         COALESCE(SUM(shipping_price),0) as shipping_price,
         COALESCE(SUM(discounted_shipping_price),0) as discounted_shipping_price,
@@ -183,22 +193,22 @@ WITH
     GROUP BY order_id
     ),
 
-    tag_raw_data AS 
+    tag_raw_data AS
     ({{ dbt_utils.union_relations(relations = tag_raw_tables) }}),
 
-    tags AS 
-    (SELECT order_id, 
+    tags AS
+    (SELECT order_id,
         LISTAGG(value, ', ') WITHIN GROUP (ORDER BY index) as order_tags
     FROM tag_raw_data
     GROUP BY order_id
     ),
 
-    refund_raw_data AS 
+    refund_raw_data AS
     ({{ dbt_utils.union_relations(relations = refund_raw_tables) }}),
 
-    refund_staging AS 
-    (SELECT 
-        
+    refund_staging AS
+    (SELECT
+
         {% for field in refund_selected_fields -%}
         {{ get_shopify_clean_field(refund_table_name, field)}}
         {%- if not loop.last %},{% endif %}
@@ -207,12 +217,12 @@ WITH
     FROM refund_raw_data
     ),
 
-    adjustment_raw_data AS 
+    adjustment_raw_data AS
     ({{ dbt_utils.union_relations(relations = adjustment_raw_tables) }}),
 
-    adjustment_staging AS 
-    (SELECT 
-        
+    adjustment_staging AS
+    (SELECT
+
         {% for field in adjustment_selected_fields -%}
         {{ get_shopify_clean_field(adjustment_table_name, field)}}
         {%- if not loop.last %},{% endif %}
@@ -221,8 +231,8 @@ WITH
     FROM adjustment_raw_data
     ),
 
-    adjustment AS 
-    (SELECT 
+    adjustment AS
+    (SELECT
         refund_id,
         SUM(CASE WHEN refund_kind = 'refund_discrepancy' THEN refund_amount END) as subtotal_refund,
         SUM(CASE WHEN refund_kind = 'shipping_refund' THEN refund_amount END) as shipping_refund,
@@ -231,12 +241,12 @@ WITH
     GROUP BY refund_id
     ),
 
-    line_refund_raw_data AS 
+    line_refund_raw_data AS
     ({{ dbt_utils.union_relations(relations = line_refund_raw_tables) }}),
 
-    line_refund_staging AS 
-    (SELECT 
-        
+    line_refund_staging AS
+    (SELECT
+
         {% for field in line_refund_selected_fields -%}
         {{ get_shopify_clean_field(line_refund_table_name, field)}}
         {%- if not loop.last %},{% endif %}
@@ -245,17 +255,17 @@ WITH
     FROM line_refund_raw_data
     ),
 
-    line_refund AS 
-    (SELECT 
-        refund_id, 
+    line_refund AS
+    (SELECT
+        refund_id,
         SUM(refund_subtotal) as subtotal_refund,
         SUM(refund_total_tax) as tax_refund
     FROM line_refund_staging
     GROUP BY refund_id
     ),
 
-    refund AS 
-    (SELECT order_id, 
+    refund AS
+    (SELECT order_id,
         ABS(COALESCE(SUM(adjustment.subtotal_refund),0)) as subtotal_order_refund,
         COALESCE(SUM(line_refund.subtotal_refund),0) as subtotal_line_refund,
         ABS(COALESCE(SUM(shipping_refund),0)) as shipping_refund,
@@ -288,13 +298,40 @@ WITH
     )
     {%- endif %}
 
+    {%- if has_customer_visit %}
+    ,customer_visit_raw_data AS
+    ({{ dbt_utils.union_relations(relations = customer_visit_raw_tables) }}),
+
+    customer_visit_staging AS
+    (SELECT
+        {% for field in customer_visit_selected_fields -%}
+        {{ get_shopify_clean_field('customer_visit', field) }}
+        {%- if not loop.last %},{% endif %}
+        {% endfor %}
+    FROM customer_visit_raw_data
+    ),
+
+    -- last visit before the order = the visit most likely to have driven the purchase
+    customer_visit AS
+    (SELECT order_id, visit_source
+    FROM (
+        SELECT order_id,
+            COALESCE(utm_parameters_source, source) as visit_source,
+            ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY occurred_at DESC) as rn
+        FROM customer_visit_staging
+        WHERE order_id IS NOT NULL
+    )
+    WHERE rn = 1
+    )
+    {%- endif %}
+
 SELECT *,
-    processed_at::date as order_date, 
+    processed_at::date as order_date,
     {{ get_date_parts('order_date') }},
     COALESCE(total_discounts/NULLIF(gross_revenue,0),0) as discount_rate,
     -- exclude cancelled orders vs Shopify includes cancelled orders
     MIN(CASE WHEN cancelled_at IS NULL THEN order_date END) OVER (PARTITION BY customer_id) as customer_first_order_date,
-    MAX(CASE WHEN cancelled_at IS NULL THEN order_date END) OVER (PARTITION BY customer_id) as customer_last_order_date, 
+    MAX(CASE WHEN cancelled_at IS NULL THEN order_date END) OVER (PARTITION BY customer_id) as customer_last_order_date,
     CASE WHEN cancelled_at IS NULL THEN ROW_NUMBER() OVER (PARTITION BY customer_id, cancelled_at IS NULL ORDER BY order_date) END as customer_order_index,
     order_id as unique_key
 FROM orders
@@ -304,4 +341,7 @@ LEFT JOIN tags USING(order_id)
 LEFT JOIN refund USING(order_id)
 {%- if has_fulfillment %}
 LEFT JOIN fulfillment USING(order_id)
+{%- endif %}
+{%- if has_customer_visit %}
+LEFT JOIN customer_visit USING(order_id)
 {%- endif %}
