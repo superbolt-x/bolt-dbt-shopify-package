@@ -100,6 +100,11 @@ WITH giftcard_deduction AS
     {%- if var('sales_channel_inclusion') != 'dummy' %}
     AND source_name IN ({{ sales_channel_inclusion_list }})
     {%- endif %}
+    {%- if is_incremental() %}
+    -- 30-day lookback: order-level fields (financial_status, cancellations, refunds) can
+    -- still change within this window. Run --full-refresh periodically for late changes.
+    AND order_date >= (select max(date)-30 from {{ this }})
+    {%- endif %}
     )
 
 SELECT *,
