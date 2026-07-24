@@ -9,9 +9,14 @@
 {%- set has_fulfillment = (dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment_order_line') | length > 0) and (dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment') | length > 0) -%}
 
 
-WITH orders AS 
+WITH orders AS
     (SELECT *
     FROM {{ ref('shopify_daily_sales_by_order') }}
+    {%- if is_incremental() %}
+    -- 30-day lookback, same window as shopify_daily_sales_by_order. Run --full-refresh
+    -- periodically for late changes (refunds/cancellations outside the window).
+    WHERE date >= (select max(date)-30 from {{ this }})
+    {%- endif %}
     ),
 
     line_items AS 
