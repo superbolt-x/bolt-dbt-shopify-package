@@ -1,20 +1,31 @@
 {{ config (
-    alias = target.database + '_shopify_sales_by_product'
+    alias = target.database + '_shopify_sales_by_product',
+    materialized = 'incremental',
+    unique_key = 'unique_key',
+    incremental_strategy = 'delete+insert',
+    on_schema_change = 'append_new_columns'
 )}}
 
 {%- set date_granularity_list = ['day','week','month','quarter','year'] -%}
 
-WITH 
-    orders AS 
+{#- Reprocess from the start of the year containing (max date - 30d). Reading whole
+    periods keeps the week/month/quarter/year roll-ups complete; data older than the
+    30-day lookback does not change. Run with --full-refresh periodically to refresh
+    historical rows affected by late changes outside the window. -#}
+
+WITH
+    orders AS
     (SELECT order_id, shipping_discount, subtotal_discount, total_tax, shipping_price, subtotal_revenue, total_revenue, gross_revenue
     FROM {{ ref('shopify_daily_sales_by_order') }}
     ),
 
-    line_items AS 
+    line_items AS
     (SELECT *
     FROM {{ ref('shopify_daily_sales_by_order_line_item') }}
+    {%- if is_incremental() %}
+    WHERE date >= date_trunc('year', (select dateadd(day,-30,max(date)) from {{ ref('shopify_daily_sales_by_order') }}))::date
+    {%- endif %}
     ),
-
     products AS 
     (SELECT DISTINCT product_id, variant_id, product_title, product_type
     FROM {{ ref('shopify_products') }}
@@ -89,8 +100,11 @@ WITH
         SUM(COALESCE(shipping_refund,0)) as shipping_refund,
         SUM(COALESCE(tax_refund,0)) as tax_refund,
         SUM(COALESCE(subtotal_refund,0)-COALESCE(shipping_refund,0)-COALESCE(tax_refund,0)) as total_refund
-    FROM {{ ref('shopify_daily_refunds_by_product') }}
+ FROM {{ ref('shopify_daily_refunds_by_product') }}
     WHERE cancelled_at is null
+    {%- if is_incremental() %}
+    AND date >= date_trunc('year', (select dateadd(day,-30,max(date)) from {{ ref('shopify_daily_sales_by_order') }}))::date
+    {%- endif %}
     GROUP BY date_granularity, dg, product_title, product_type
     ),
 
@@ -175,7 +189,8 @@ SELECT
     SUM(coalesce(r.shipping_refund,0)) as shipping_returns,
     SUM(coalesce(r.tax_refund,0)) as tax_returns,
     SUM(COALESCE(s.subtotal_sales,0) - coalesce(r.subtotal_refund,0)) as net_sales,
-    SUM(COALESCE(s.total_sales,0) - coalesce(r.total_refund,0)) as total_net_sales
+    SUM(COALESCE(s.total_sales,0) - coalesce(r.total_refund,0)) as total_net_sales,
+    md5(date_granularity||'_'||dg||'_'||coalesce(product_title,'')||'_'||coalesce(product_type,'')) as unique_key
 FROM sales_{{date_granularity}} s
 FULL JOIN refunds_{{date_granularity}} r USING(date_granularity, dg, product_title, product_type)
 GROUP BY date_granularity, date, product_title, product_type
