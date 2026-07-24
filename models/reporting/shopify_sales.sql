@@ -13,9 +13,6 @@
     30-day lookback does not change. Run with --full-refresh periodically to refresh
     historical rows affected by late changes outside the window. -#}
 
-
-{%- set date_granularity_list = ['day','week','month','quarter','year'] -%}
-
 WITH sales_and_refunds_data AS (
 
     -- SALES ROWS
