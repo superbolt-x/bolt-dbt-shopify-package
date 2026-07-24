@@ -1,6 +1,18 @@
 {{ config(
-    alias = target.database + '_shopify_sales'
+    alias = target.database + '_shopify_sales',
+    materialized = 'incremental',
+    unique_key = 'unique_key',
+    incremental_strategy = 'delete+insert',
+    on_schema_change = 'append_new_columns'
 ) }}
+
+{%- set date_granularity_list = ['day','week','month','quarter','year'] -%}
+
+{#- Reprocess from the start of the year containing (max date - 30d). Reading whole
+    periods keeps the week/month/quarter/year roll-ups complete; data older than the
+    30-day lookback does not change. Run with --full-refresh periodically to refresh
+    historical rows affected by late changes outside the window. -#}
+
 
 {%- set date_granularity_list = ['day','week','month','quarter','year'] -%}
 
@@ -81,6 +93,9 @@ WITH sales_and_refunds_data AS (
     {%- if var('canceled_orders') != 'included' %}
     AND cancelled_at IS NULL
     {%- endif %}
+    {%- if is_incremental() %}
+    AND date >= date_trunc('year', (select dateadd(day,-30,max(date)) from {{ ref('shopify_daily_sales_by_order') }}))::date
+    {%- endif %}
 
     UNION ALL
 
@@ -154,9 +169,12 @@ WITH sales_and_refunds_data AS (
         NULL AS repeat_net_customers
 
     FROM {{ ref('shopify_daily_refunds') }}
-    
+    WHERE 1=1
     {%- if var('canceled_orders') != 'included' %}
-    WHERE cancelled_at IS NULL
+    AND cancelled_at IS NULL
+    {%- endif %}
+    {%- if is_incremental() %}
+    AND date >= date_trunc('year', (select dateadd(day,-30,max(date)) from {{ ref('shopify_daily_sales_by_order') }}))::date
     {%- endif %}
 
 ),
@@ -303,5 +321,6 @@ GROUP BY 1,2
 
 )
 
-SELECT *
+SELECT *,
+    date_granularity||'_'||date as unique_key
 FROM shopify_data
