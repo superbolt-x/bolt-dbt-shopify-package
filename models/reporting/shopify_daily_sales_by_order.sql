@@ -2,6 +2,7 @@
     alias = target.database + '_shopify_daily_sales_by_order',
     materialized='incremental',
     unique_key='unique_key',
+    incremental_strategy='delete+insert',
     on_schema_change='append_new_columns'
 )}}
 
