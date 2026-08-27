@@ -45,7 +45,6 @@
 {%- set order_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order') -%}
 {%- set refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'refund') -%}
 {%- set adjustment_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_adjustment') -%}
-{%- set line_refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line_refund') -%}
 
 WITH 
     -- To tackle the signal loss between Fivetran and Shopify transformations
@@ -98,7 +97,7 @@ WITH
     ),
 
     line_refund_raw_data AS 
-    ({{ dbt_utils.union_relations(relations = line_refund_raw_tables) }}),
+    ({{ get_shopify_refund_line_items() }}),
 
     line_refund_staging AS 
     (SELECT 
