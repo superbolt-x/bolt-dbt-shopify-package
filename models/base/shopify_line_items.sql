@@ -31,7 +31,6 @@
     "status"
 ] -%}
 {%- set order_line_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line') -%}
-{%- set order_line_refund_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line_refund') -%}
 {%- set fulfillment_order_line_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment_order_line') -%}
 {%- set fulfillment_raw_tables = dbt_utils.get_relations_by_pattern('shopify_raw%', 'fulfillment') -%}
 {%- set has_fulfillment = (fulfillment_order_line_raw_tables | length > 0) and (fulfillment_raw_tables | length > 0) -%}
@@ -46,7 +45,7 @@ WITH order_line_raw_data AS
     FROM order_line_raw_data
     ),
     order_line_refund_raw_data AS 
-    ({{ dbt_utils.union_relations(relations = order_line_refund_raw_tables) }}),
+    ({{ get_shopify_refund_line_items() }}),
     refund_raw AS 
     (SELECT 
         
