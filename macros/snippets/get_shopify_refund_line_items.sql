@@ -1,11 +1,16 @@
 {#-
-    Shopifys GraphQL Admin API schema renamed `order_line_refund` to
+    Shopify's GraphQL Admin API schema renamed `order_line_refund` to
     `refund_line_item` and moved the money fields into `*_set_shop_amount`.
     Connectors created before the switch still land the legacy shape.
 
     This macro emits a SELECT that normalises BOTH shapes to the legacy column
     names, so downstream models (and get_shopify_clean_field) stay unchanged.
     Handles legacy-only, graphql-only, and mixed multi-store projects.
+
+    NOTE: get_relations_by_pattern runs a query, so during dbt's parse phase
+    (execute == False) both lists come back empty and this macro renders to an
+    empty string. That is expected -- the real relations are resolved on the
+    run phase. Every check below must therefore be guarded by `execute`.
 -#}
 
 {%- macro get_shopify_refund_line_items() -%}
@@ -13,7 +18,7 @@
 {%- set legacy_relations  = dbt_utils.get_relations_by_pattern('shopify_raw%', 'order_line_refund') -%}
 {%- set graphql_relations = dbt_utils.get_relations_by_pattern('shopify_raw%', 'refund_line_item')  -%}
 
-{%- if legacy_relations | length == 0 and graphql_relations | length == 0 -%}
+{%- if execute and legacy_relations | length == 0 and graphql_relations | length == 0 -%}
     {{ exceptions.raise_compiler_error(
         "No refund line item table found in shopify_raw%. Looked for 'order_line_refund' (legacy) and 'refund_line_item' (GraphQL). Check that the Fivetran sync has landed."
     ) }}
