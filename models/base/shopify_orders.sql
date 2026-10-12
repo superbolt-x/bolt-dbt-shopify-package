@@ -294,7 +294,10 @@ SELECT *,
     -- exclude cancelled orders vs Shopify includes cancelled orders
     MIN(CASE WHEN cancelled_at IS NULL THEN order_date END) OVER (PARTITION BY customer_id) as customer_first_order_date,
     MAX(CASE WHEN cancelled_at IS NULL THEN order_date END) OVER (PARTITION BY customer_id) as customer_last_order_date,
-    CASE WHEN cancelled_at IS NULL THEN ROW_NUMBER() OVER (PARTITION BY customer_id, cancelled_at IS NULL ORDER BY order_date) END as customer_order_index,
+    -- order_date is a DATE, so a customer's orders on the same day tie. Without a unique tie-break which one gets index 1 is
+    -- arbitrary and can change on every rebuild (first vs repeat order gross sales then wobble between builds). order_id is
+    -- unique and increases with creation time, so it makes the index deterministic without changing any order that is not in a tie.
+    CASE WHEN cancelled_at IS NULL THEN ROW_NUMBER() OVER (PARTITION BY customer_id, cancelled_at IS NULL ORDER BY order_date, order_id) END as customer_order_index,
     order_id as unique_key
 FROM orders
 LEFT JOIN discount USING(order_id)
